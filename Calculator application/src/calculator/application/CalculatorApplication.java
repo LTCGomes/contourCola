@@ -5,6 +5,7 @@
  */
 package calculator.application;
 
+import Library.contourCola;
 
 import java.awt.Component;
 import java.awt.Dimension;
@@ -25,7 +26,7 @@ import javax.swing.border.EmptyBorder;
  * @author Luis
  */
 public class CalculatorApplication {
- private String input = "0";
+    private String input = "0";
     /*memoria deve guardar o numero em memoria*/
     private float operando1, valorEcra, memoria;
     private char operacao = 'n';
@@ -247,18 +248,38 @@ public class CalculatorApplication {
 		
         return panel;
     }
+    
+    public static boolean checkLicence() {
+        
+        //System.out.println(obj.getClass().getResource(className));
+        //System.out.println(System.getProperty("program.name"));
+        contourCola contour = new contourCola("Calculadora", "1.0");
+        
+        if (contour.isRegister()) {
+            return true;
+        } else {
+            contour.startRegistration();
+            
+            return false;
+        }
+    }
 	
     public static void main(String[] args) {
-        JFrame.setDefaultLookAndFeelDecorated(true);
-        JFrame frame = new JFrame("Calculadora");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		
-        CalculatorApplication p = new CalculatorApplication();
-        frame.setContentPane(p.makeCalculator());
-                
-        frame.setResizable(false);
-        frame.pack(); //tem o mesmo efeito que: frame.setSize(frame.getPreferredSize());
-        frame.setVisible(true);
+        
+        if(checkLicence()) {
+            JFrame.setDefaultLookAndFeelDecorated(true);
+            JFrame frame = new JFrame("Calculadora");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+            CalculatorApplication p = new CalculatorApplication();
+            frame.setContentPane(p.makeCalculator());
+
+            frame.setResizable(false);
+            frame.pack(); //tem o mesmo efeito que: frame.setSize(frame.getPreferredSize());
+            frame.setVisible(true);
+        } else {
+            System.out.println("No Licence");
+        }
     }
 }
 
