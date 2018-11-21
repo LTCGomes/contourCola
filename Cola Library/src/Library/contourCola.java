@@ -11,8 +11,16 @@ package Library;
  */
 public class contourCola {
 
+private Aplicacao aplicacao;
+private Utilizador utilizador;
+private Sistema sistema;
+
+
+
     public contourCola(String nomeAplicacao, String versao) {
-        //TODO
+        //utilizador = new Utilizador(nomeAplicacao, versao, nomeAplicacao);
+        sistema = new Sistema();
+        aplicacao = new Aplicacao(nomeAplicacao, versao);
     }
     
     public boolean isRegister() {
