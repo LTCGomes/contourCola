@@ -259,7 +259,6 @@ public class CalculatorApplication {
             return true;
         } else {
             contour.startRegistration();
-            
             return false;
         }
     }
