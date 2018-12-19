@@ -6,7 +6,10 @@
 package Library;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyStore;
@@ -20,9 +23,13 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
 
 /**
  *
@@ -34,6 +41,7 @@ public class contourCola {
     private Utilizador utilizador;
     private Sistema sistema;
     private GenerateKeys chaves;
+    private List<byte[]> list;
 
 
 
@@ -46,8 +54,8 @@ public class contourCola {
             new File("keyPair").mkdir();
             if (!new File("keyPair/publicKey.publick").exists() && !new File("keyPair/privateKey.privk").exists()) {
                 chaves.createKeys();
-                chaves.writeToFile("KeyPair/publicKey.publick", chaves.getPublicKey().getEncoded());
-                chaves.writeToFile("KeyPair/privateKey.privk", chaves.getPrivateKey().getEncoded());
+                chaves.writeKeysToFile("KeyPair/publicKey.publick", chaves.getPublicKey().getEncoded());
+                chaves.writeKeysToFile("KeyPair/privateKey.privk", chaves.getPrivateKey().getEncoded());
             }
         } 
     }
@@ -59,7 +67,14 @@ public class contourCola {
         return false;
     }
     
-    public boolean startRegistration() {
+    /**
+     * O pedido de licença deve ter: 
+     * - Dados do sistema cifrados por uma chave simetrica
+     * - chave simetrica cifrada pela chave privada assimetrica
+     * - assinatura com o certificado do cartão de cidadão
+     * - certificado do cartão de cidadão
+     */
+    public boolean startRegistration() throws Exception {
         //apresentar opções de inicio de registo de aplicacao
         System.out.println("#-----------------------------------------#");
         System.out.println("#Esta aplicação não se encontra registada.#");
@@ -72,15 +87,33 @@ public class contourCola {
         String opcao = scan.nextLine();
         
         if(opcao.equals("1")) {
+            list = new ArrayList<byte[]>();
             //buscar informação da contourCola e guarda-la para o ficheiro
-            String file = "";
-            file += "sistemaMAC/"+sistema.getEnderecoMac()+"/sistemaNumSerie/"+sistema.getNumeroSerie()+"/sistemaUuid/"+sistema.getUuid()+
+            String stringVars = "";
+            stringVars += "sistemaMAC/"+sistema.getEnderecoMac()+"/sistemaNumSerie/"+sistema.getNumeroSerie()+"/sistemaUuid/"+sistema.getUuid()+
                     "/appNome/"+aplicacao.getNomeAplicacao()+"/appVersao/"+aplicacao.getVersao();
-
-            byte[] vars = file.getBytes();
             
-            System.out.println(vars);
-            //assinar o ficheiro criado anteriormente com a chave do cartão de cidadão do utilizador
+            byte[] byteVars = stringVars.getBytes();
+            
+            //cifrar ficheiro com chave simetrica
+            KeyGenerator generator = KeyGenerator.getInstance("DES");
+            Key chaveDeCifraSim = generator.generateKey();
+            byte[] bytesChaveSimetrica = chaveDeCifraSim.getEncoded();
+            Cipher cipher = Cipher.getInstance("DES");
+            cipher.init(Cipher.ENCRYPT_MODE, chaveDeCifraSim);
+            byte[] bytesVarsCifrados = cipher.doFinal(byteVars);
+            System.out.println("bytesVarsCifrados: "+bytesVarsCifrados);    //GUARDAR ISTO
+            list.add(bytesVarsCifrados);
+            
+            //cifrar chave simetrica com a chave assimetrica privada
+            PrivateKey contourPriv = chaves.getPrivate("KeyPair/privateKey.privk");
+            Cipher cifra = Cipher.getInstance("RSA");
+            cifra.init(Cipher.ENCRYPT_MODE, contourPriv);
+            byte[] bytesChaveSimCifrada = cifra.doFinal(bytesChaveSimetrica);
+            System.out.println("bytesChaveSimCifrada: "+bytesChaveSimCifrada);    //GUARDAR ISTO
+            list.add(bytesChaveSimCifrada);
+            
+            //assinar o array de bytes das variaveis do sistema com o certificado do cartao de cidadao
             Provider[] provs = Security.getProviders();
             KeyStore ks = null;
             try {
@@ -91,16 +124,20 @@ public class contourCola {
                 }
                 ks.load( null, null );
                 Key key = ks.getKey("CITIZEN AUTHENTICATION CERTIFICATE", null);
+                byte[] bytesCertCC = key.getEncoded();
+                System.out.println("key: "+bytesCertCC);    //GUARDAR ISTO
+                list.add(bytesCertCC);
                 
                 Signature sig = Signature.getInstance("SHA256withRSA");
                 sig.initSign((PrivateKey) key);
-                sig.update(vars);
-                byte[] sigBytes = sig.sign();
-                //System.out.println("Singature (Encoded): " + new BASE64Encoder().encode(sigBytes));
+                sig.update(byteVars);
+                byte[] bytesSig = sig.sign();
+                System.out.println("sigBytes: "+bytesSig);    //GUARDAR ISTO
+                list.add(bytesSig);
                 
-                //criar pare de chaves assimetricas e cifrar o sigBytes
-                
-                //guardar ficheiros e chaves
+                //guardar ficheiro
+                writeToFile("Licence/PedidoDeLicenca.txt");
+                              
             } catch (KeyStoreException ex) {
                 Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IOException ex) {
@@ -133,5 +170,13 @@ public class contourCola {
         //read licence from file
         
         //print to console
+    }
+    
+    private void writeToFile(String filename) throws FileNotFoundException, IOException {
+        File f = new File(filename);
+        f.getParentFile().mkdirs();
+        ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filename));
+        out.writeObject(list);
+        out.close();
     }
 }

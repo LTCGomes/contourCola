@@ -9,6 +9,13 @@ package cola.management;
  *
  * @author tjsantos
  */
+
+/**
+* A licença deve ter: 
+* - Hashs de dados assinados pelo autor
+* - certificado do autor
+* - hash de dados
+*/
 public class ColaManagement {
 
     /**

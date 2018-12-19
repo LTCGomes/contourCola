@@ -48,7 +48,7 @@ public class GenerateKeys {
         return this.publica;
     }
 
-    public void writeToFile(String fileName, byte[] text) throws FileNotFoundException, IOException {
+    public void writeKeysToFile(String fileName, byte[] text) throws FileNotFoundException, IOException {
         FileOutputStream fos = new FileOutputStream(new File(fileName), false);
         fos.write(text);
         fos.close();

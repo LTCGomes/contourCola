@@ -25,6 +25,8 @@ class Sistema {
         id da placa de rede
         uuid - A universally unique identifier (UUID) is a 128-bit number used to identify information in computer systems. 
         
+    
+        JHARDWARE pesquisar esta biblioteca
     */
     private String numeroSerie;
     private String enderecoMac;

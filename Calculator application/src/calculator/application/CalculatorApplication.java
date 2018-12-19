@@ -13,6 +13,7 @@ import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.IOException;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -249,7 +250,7 @@ public class CalculatorApplication {
         return panel;
     }
     
-    public static boolean checkLicence() {
+    public static boolean checkLicence() throws IOException, Exception {
         
         //System.out.println(obj.getClass().getResource(className));
         //System.out.println(System.getProperty("program.name"));
@@ -263,7 +264,7 @@ public class CalculatorApplication {
         }
     }
 	
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         
         if(checkLicence()) {
             JFrame.setDefaultLookAndFeelDecorated(true);
