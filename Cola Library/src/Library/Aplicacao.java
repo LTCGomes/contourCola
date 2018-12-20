@@ -12,10 +12,14 @@ package Library;
 class Aplicacao {
     private String nomeAplicacao;
     private String versao;
+    private String hashAplicacao;
+    private String hashBiblioteca;
     
-    public Aplicacao(String nomeAplicacao, String versao) {
+    public Aplicacao(String nomeAplicacao, String versao, String hashAplicacao, String hashBiblioteca) {
         this.nomeAplicacao = nomeAplicacao;
         this.versao = versao;
+        this.hashAplicacao = hashAplicacao;
+        this.hashBiblioteca = hashBiblioteca;
     }
 
     public String getNomeAplicacao() {
@@ -25,6 +29,13 @@ class Aplicacao {
     public String getVersao() {
         return versao;
     }
-    
+
+    public String getHashAplicacao() {
+        return hashAplicacao;
+    }
+
+    public String getHashBiblioteca() {
+        return hashBiblioteca;
+    }
     
 }
