@@ -48,7 +48,7 @@ public class contourCola {
     public contourCola(String nomeAplicacao, String versao) throws NoSuchAlgorithmException, IOException, Exception {
         //utilizador = new Utilizador(nomeAplicacao, versao, nomeAplicacao);
         sistema = new Sistema();
-        aplicacao = new Aplicacao(nomeAplicacao, versao);
+        aplicacao = new Aplicacao(nomeAplicacao, versao, "", "");
         chaves = new GenerateKeys(1024);
         if (!new File("keyPair").isDirectory()) {
             new File("keyPair").mkdir();
