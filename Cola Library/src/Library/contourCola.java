@@ -24,6 +24,7 @@ import java.security.SignatureException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 import java.util.logging.Level;
@@ -105,7 +106,7 @@ public class contourCola {
                 Cipher cipher = Cipher.getInstance("DES");
                 cipher.init(Cipher.ENCRYPT_MODE, chaveDeCifraSim);
                 byte[] bytesVarsCifrados = cipher.doFinal(byteVars);
-                System.out.println("bytesVarsCifrados: " + bytesVarsCifrados);    //GUARDAR ISTO
+                System.out.println("bytesVarsCifrados: " + Arrays.toString(bytesVarsCifrados));    //GUARDAR ISTO
                 list.add(bytesVarsCifrados);
 
                 //cifrar chave simetrica com a chave assimetrica privada
@@ -113,7 +114,7 @@ public class contourCola {
                 Cipher cifra = Cipher.getInstance("RSA");
                 cifra.init(Cipher.ENCRYPT_MODE, contourPriv);
                 byte[] bytesChaveSimCifrada = cifra.doFinal(bytesChaveSimetrica);
-                System.out.println("bytesChaveSimCifrada: " + bytesChaveSimCifrada);    //GUARDAR ISTO
+                System.out.println("bytesChaveSimCifrada: " + Arrays.toString(bytesChaveSimCifrada));    //GUARDAR ISTO
                 list.add(bytesChaveSimCifrada);
 
                 //assinar o array de bytes das variaveis do sistema com o certificado do cartao de cidadao
@@ -128,14 +129,14 @@ public class contourCola {
                     ks.load(null, null);
                     Key key = ks.getKey("CITIZEN AUTHENTICATION CERTIFICATE", null);
                     byte[] bytesCertCC = key.getEncoded();
-                    System.out.println("key: " + bytesCertCC);    //GUARDAR ISTO
+                    System.out.println("key: " + Arrays.toString(bytesCertCC));    //GUARDAR ISTO
                     list.add(bytesCertCC);
 
                     Signature sig = Signature.getInstance("SHA256withRSA");
                     sig.initSign((PrivateKey) key);
                     sig.update(byteVars);
                     byte[] bytesSig = sig.sign();
-                    System.out.println("sigBytes: " + bytesSig);    //GUARDAR ISTO
+                    System.out.println("sigBytes: " + Arrays.toString(bytesSig));    //GUARDAR ISTO
                     list.add(bytesSig);
 
                     //guardar ficheiro
