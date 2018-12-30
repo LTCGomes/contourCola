@@ -25,12 +25,15 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import pteidlib.PteidException;
 
 /**
  *
@@ -39,13 +42,20 @@ import javax.crypto.KeyGenerator;
 public class contourCola {
 
     private Aplicacao aplicacao;
-    private Utilizador utilizador;
     private Sistema sistema;
+    private Utilizador utilizador;
     private GenerateKeys chaves;
     private List<byte[]> list;
 
-    public contourCola(String nomeAplicacao, String versao) throws NoSuchAlgorithmException, IOException, Exception {
-        //utilizador = new Utilizador(nomeAplicacao, versao, nomeAplicacao);
+    public contourCola(String nomeAplicacao, String versao) throws NoSuchAlgorithmException, IOException, Exception, PteidException {
+        Utilizador.loadPteidLib();
+        utilizador = new Utilizador();
+        if (utilizador.getData()) {
+            utilizador.getNome();
+            utilizador.getIdenticacaoCivil();
+        } else {
+            System.exit(1);
+        }
         sistema = new Sistema();
         aplicacao = new Aplicacao(nomeAplicacao, versao, "", "");
         chaves = new GenerateKeys(1024);
@@ -72,7 +82,7 @@ public class contourCola {
      * assinatura com o certificado do cartão de cidadão - certificado do cartão
      * de cidadão
      */
-    public boolean startRegistration() throws Exception {
+    public boolean startRegistration() throws Exception, PteidException {
         //apresentar opções de inicio de registo de aplicacao
         System.out.println("#-----------------------------------------#");
         System.out.println("#Esta aplicação não se encontra registada.#");
@@ -92,18 +102,22 @@ public class contourCola {
 
             if (!(mail.equals(""))) {
                 list = new ArrayList<byte[]>();
+
                 //buscar informação da contourCola e guarda-la para o ficheiro
                 String stringVars = "";
-                stringVars += "sistemaMAC/" + sistema.getEnderecoMac() + "/sistemaNumSerie/" + sistema.getNumeroSerie() + "/sistemaUuid/" + sistema.getUuid()
-                        + "/appNome/" + aplicacao.getNomeAplicacao() + "/appVersao/" + aplicacao.getVersao();
-
+                stringVars += "Nome/" + utilizador.getNome() + " /Numero de Identificação Civil/" + utilizador.getIdenticacaoCivil() + " /Email/" + mail
+                        + " /sistemaMAC/" + sistema.getEnderecoMac() + " /sistemaNumSerie/" + sistema.getNumeroSerie() + " /sistemaUuid/" + sistema.getUuid()
+                        + " /appNome/" + aplicacao.getNomeAplicacao() + " /appVersao/" + aplicacao.getVersao();
+                System.out.println("Dados:" + stringVars);
                 byte[] byteVars = stringVars.getBytes();
 
-                //cifrar ficheiro com chave simetrica
-                KeyGenerator generator = KeyGenerator.getInstance("DES");
+                //gerar chave simetrica
+                KeyGenerator generator = KeyGenerator.getInstance("AES");
+                generator.init(128);
                 Key chaveDeCifraSim = generator.generateKey();
                 byte[] bytesChaveSimetrica = chaveDeCifraSim.getEncoded();
-                Cipher cipher = Cipher.getInstance("DES");
+                // cifrar o ficheiro
+                Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
                 cipher.init(Cipher.ENCRYPT_MODE, chaveDeCifraSim);
                 byte[] bytesVarsCifrados = cipher.doFinal(byteVars);
                 System.out.println("bytesVarsCifrados: " + Arrays.toString(bytesVarsCifrados));    //GUARDAR ISTO
@@ -139,8 +153,7 @@ public class contourCola {
                     System.out.println("sigBytes: " + Arrays.toString(bytesSig));    //GUARDAR ISTO
                     list.add(bytesSig);
 
-                    //guardar ficheiro
-                    writeToFile("Licence/PedidoDeLicenca.txt");
+                    writeToFile("Licence/PedidoDeLicenca.txt");                      //guardar ficheiro
 
                 } catch (KeyStoreException ex) {
                     Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
@@ -161,7 +174,7 @@ public class contourCola {
                 }
 
                 //cifrar assinatura e o ficheiro
-                System.out.println("Encontre o ficheiro gerado na raiz do seu programa");
+                System.out.println("Pedido de licença gerado com sucesso.");
                 return true;
             }
         } else {
@@ -174,7 +187,7 @@ public class contourCola {
 
     public void showLicenseInfo() {
         //read licence from file
-
+        
         //print to console
     }
 

@@ -14,7 +14,6 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
-
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -22,6 +21,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
+import pteidlib.PteidException;
 /**
  *
  * @author Luis
@@ -251,7 +251,6 @@ public class CalculatorApplication {
     }
     
     public static boolean checkLicence() throws IOException, Exception {
-        
         //System.out.println(obj.getClass().getResource(className));
         //System.out.println(System.getProperty("program.name"));
         contourCola contour = new contourCola("Calculadora", "1.0");
