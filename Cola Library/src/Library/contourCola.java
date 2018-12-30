@@ -22,6 +22,7 @@ import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.UnrecoverableKeyException;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -98,14 +99,14 @@ public class contourCola {
             System.out.println("#-----------------------------------------#");
             System.out.println(" Introduza o seu email:");
             Scanner email = new Scanner(System.in);
-            String mail = email.nextLine();
+            utilizador.setEmail(email.nextLine());
 
-            if (!(mail.equals(""))) {
+            if (!(utilizador.getEmail().equals(""))) {
                 list = new ArrayList<byte[]>();
 
                 //buscar informação da contourCola e guarda-la para o ficheiro
                 String stringVars = "";
-                stringVars += "Nome/" + utilizador.getNome() + " /Numero de Identificação Civil/" + utilizador.getIdenticacaoCivil() + " /Email/" + mail
+                stringVars += "Nome/" + utilizador.getNome() + " /Numero de Identificação Civil/" + utilizador.getIdenticacaoCivil() + " /Email/" + utilizador.getEmail()
                         + " /sistemaMAC/" + sistema.getEnderecoMac() + " /sistemaNumSerie/" + sistema.getNumeroSerie() + " /sistemaUuid/" + sistema.getUuid()
                         + " /appNome/" + aplicacao.getNomeAplicacao() + " /appVersao/" + aplicacao.getVersao();
                 System.out.println("Dados:" + stringVars);
@@ -142,15 +143,17 @@ public class contourCola {
                     }
                     ks.load(null, null);
                     Key key = ks.getKey("CITIZEN AUTHENTICATION CERTIFICATE", null);
-                    byte[] bytesCertCC = key.getEncoded();
-                    System.out.println("key: " + Arrays.toString(bytesCertCC));    //GUARDAR ISTO
+                    
+                    Certificate certificado = ks.getCertificate("CITIZEN AUTHENTICATION CERTIFICATE");
+                    byte[] bytesCertCC = certificado.getEncoded();
+                    System.out.println("certificado: " + Arrays.toString(bytesCertCC));    //GUARDAR ISTO
                     list.add(bytesCertCC);
 
                     Signature sig = Signature.getInstance("SHA256withRSA");
                     sig.initSign((PrivateKey) key);
                     sig.update(byteVars);
                     byte[] bytesSig = sig.sign();
-                    System.out.println("sigBytes: " + Arrays.toString(bytesSig));    //GUARDAR ISTO
+                    System.out.println("assinatura: " + Arrays.toString(bytesSig));    //GUARDAR ISTO
                     list.add(bytesSig);
 
                     writeToFile("Licence/PedidoDeLicenca.txt");                      //guardar ficheiro
@@ -194,7 +197,7 @@ public class contourCola {
     private void writeToFile(String filename) throws FileNotFoundException, IOException {
         File f = new File(filename);
         f.getParentFile().mkdirs();
-        ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(filename));
+        ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(f));
         out.writeObject(list);
         out.close();
     }

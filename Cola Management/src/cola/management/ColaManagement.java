@@ -88,11 +88,10 @@ public class ColaManagement {
         bytesCertCC = list.get(2);
         bytesSig = list.get(3);
         System.out.println("============");
-        System.out.println(Arrays.toString(list.get(0)));
-        System.out.println(Arrays.toString(list.get(1)));
-        System.out.println(Arrays.toString(list.get(2)));
-        System.out.println(Arrays.toString(list.get(3)));
-        System.out.println(list);
+        System.out.println("array bytes bytesVarsCifrados: "+Arrays.toString(list.get(0)));
+        System.out.println("array bytes bytesChaveSimCifrada: "+Arrays.toString(list.get(1)));
+        System.out.println("array bytes certificado: "+Arrays.toString(list.get(2)));
+        System.out.println("array bytes assinatura: "+Arrays.toString(list.get(3)));
         System.out.println("============");
     }
 
@@ -103,7 +102,7 @@ public class ColaManagement {
     }
 
     public byte[] getDadosDecifrados(SecretKey chaveDeCifraSim) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        Cipher cipher = Cipher.getInstance("AES");
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
         cipher.init(Cipher.DECRYPT_MODE, chaveDeCifraSim);
         return cipher.doFinal(list.get(0));
     }
@@ -151,9 +150,10 @@ public class ColaManagement {
             sig.initVerify((PublicKey) );
             sig.update(data);
             boolean asinaturaValida = sig.verify(signature);*/
+            
+            
             //usar chave publica asimetrica para decifrar chave simetrica
             byte[] bytesChaveSimetrica = autor.getSimKey(chavePublicaUtilizador);
-            System.out.println(Arrays.toString(bytesChaveSimetrica));
 
             //usar chave simetrica para decifrar dados do utilizador
             SecretKey chaveDeCifraSim = new SecretKeySpec(bytesChaveSimetrica, "AES");
