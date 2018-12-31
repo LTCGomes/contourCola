@@ -12,12 +12,15 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.cert.CertificateException;
@@ -26,6 +29,7 @@ import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
 import javax.crypto.BadPaddingException;
@@ -34,6 +38,17 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import sun.security.x509.AlgorithmId;
+import sun.security.x509.CertificateAlgorithmId;
+import sun.security.x509.CertificateIssuerName;
+import sun.security.x509.CertificateSerialNumber;
+import sun.security.x509.CertificateSubjectName;
+import sun.security.x509.CertificateValidity;
+import sun.security.x509.CertificateVersion;
+import sun.security.x509.CertificateX509Key;
+import sun.security.x509.X500Name;
+import sun.security.x509.X509CertImpl;
+import sun.security.x509.X509CertInfo;
 
 /**
  *
@@ -53,11 +68,12 @@ public class ColaManagement {
     private byte[] bytesChaveSimCifrada;
     private byte[] bytesCertCC;
     private byte[] bytesSig;
+    private GenerateKeys chaves;
 
     /**
      * @param args the command line arguments
      */
-    public ColaManagement() {
+    public ColaManagement() throws NoSuchAlgorithmException, IOException {
         if (!new File("PedidosLicenca").isDirectory()) {
             new File("PedidosLicenca").mkdir();
             if (!new File("PedidosLicenca/Keys").isDirectory()) {
@@ -67,9 +83,50 @@ public class ColaManagement {
         if (!new File("Licencas").isDirectory()) {
             new File("Licencas").mkdir();
         }
+        
+        chaves = new GenerateKeys(1024);
+        if (!new File("keyPair").isDirectory()) {
+            new File("keyPair").mkdir();
+            if (!new File("keyPair/publicKey.publick").exists() && !new File("keyPair/privateKey.privk").exists()) {
+                chaves.createKeys();
+                chaves.writeKeysToFile("KeyPair/publicKey.publick", chaves.getPublicKey().getEncoded());
+                chaves.writeKeysToFile("KeyPair/privateKey.privk", chaves.getPrivateKey().getEncoded());
+            }
+        }
     }
+    
+    public X509Certificate generateCertificate() throws Exception {
+        PrivateKey privkey = chaves.getPrivate("KeyPair/privateKey.privk");
+        X509CertInfo info = new X509CertInfo();
+        Date from = new Date();
+        //validade de certificados de 1 ano
+        Date to = new Date(from.getTime() + 365 * 86400000l);
+        CertificateValidity interval = new CertificateValidity(from, to);
+        BigInteger sn = new BigInteger(64, new SecureRandom());
+        X500Name owner = new X500Name("Contour Management");
 
-    public void generateLicence(byte[] bytesVars) throws NoSuchAlgorithmException {
+        info.set(X509CertInfo.VALIDITY, interval);
+        info.set(X509CertInfo.SERIAL_NUMBER, new CertificateSerialNumber(sn));
+        info.set(X509CertInfo.SUBJECT, new CertificateSubjectName(owner));
+        info.set(X509CertInfo.ISSUER, new CertificateIssuerName(owner));
+        info.set(X509CertInfo.KEY, new CertificateX509Key(chaves.getPublic("KeyPair/publicKey.publick")));
+        info.set(X509CertInfo.VERSION, new CertificateVersion(CertificateVersion.V3));
+        AlgorithmId algo = new AlgorithmId(AlgorithmId.md5WithRSAEncryption_oid);
+        info.set(X509CertInfo.ALGORITHM_ID, new CertificateAlgorithmId(algo));
+
+        // Sign the cert to identify the algorithm that's used.
+        X509CertImpl cert = new X509CertImpl(info);
+        cert.sign(privkey, "SHA1withRSA");
+
+        // Update the algorith, and resign.
+        algo = (AlgorithmId)cert.get(X509CertImpl.SIG_ALG);
+        info.set(CertificateAlgorithmId.NAME + "." + CertificateAlgorithmId.ALGORITHM, algo);
+        cert = new X509CertImpl(info);
+        cert.sign(privkey, "SHA1withRSA");
+        return cert;
+    }  
+
+    public void generateLicence(byte[] bytesVars) throws NoSuchAlgorithmException, Exception {
         
         //gerar hash de dados a partir
         MessageDigest md = MessageDigest.getInstance("MD5");
@@ -78,8 +135,8 @@ public class ColaManagement {
         System.out.println("Hash: "+Arrays.toString(hash));    //GUARDAR ISTO
         licenca.add(bytesSig);
         
-        
-        
+        //gerar certificado com validade de 1 ano
+        X509Certificate cert = generateCertificate();
         
     }
 
@@ -141,7 +198,7 @@ public class ColaManagement {
         return sig.verify(list.get(3));
     }
     
-    public static void main(String[] args) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, FileNotFoundException, ClassNotFoundException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, CertificateException, SignatureException {
+    public static void main(String[] args) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, FileNotFoundException, ClassNotFoundException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, CertificateException, SignatureException, Exception {
         // TODO code application logic here
         ColaManagement autor = new ColaManagement();
 
@@ -191,6 +248,7 @@ public class ColaManagement {
                 byte[] bytesVars = autor.getDadosDecifrados(chaveDeCifraSim);
 
                 //TODO: VALIDAR SE OS DADOS JÁ NÃO ESTÃO EM USO NOUTRA LICENÇA
+                
                 autor.generateLicence(bytesVars);
             } else {
                 //se falso, avisa...
