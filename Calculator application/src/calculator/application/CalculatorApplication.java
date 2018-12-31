@@ -14,6 +14,7 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
+import java.util.Scanner;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -250,35 +251,94 @@ public class CalculatorApplication {
         return panel;
     }
     
-    public static boolean checkLicence() throws IOException, Exception {
-        //System.out.println(obj.getClass().getResource(className));
-        //System.out.println(System.getProperty("program.name"));
-        contourCola contour = new contourCola("Calculadora", "1.0");
+    public static boolean checkLicence(contourCola contour) throws IOException, Exception {
         
         if (contour.isRegister()) {
             return true;
         } else {
-            contour.startRegistration();
+            
+            //apresentar opções de inicio de registo de aplicacao
+            System.out.println("#-----------------------------------------#");
+            System.out.println("#Esta aplicação não se encontra registada.#");
+            System.out.println("#Pretende iniciar o seu registo?          #");
+            System.out.println("#-----------------------------------------#");
+            System.out.println("1 - Sim");
+            System.out.println("2 - Não (Ou qualquer outra opção)");
+            System.out.println("#-----------------------------------------#");
+            Scanner scan = new Scanner(System.in);
+            String opcao = scan.nextLine();
+
+            if (opcao.equals("1")) {
+                contour.startRegistration();
+            }
+            
             return false;
         }
     }
 	
     public static void main(String[] args) throws Exception {
         
-        if(checkLicence()) {
-            JFrame.setDefaultLookAndFeelDecorated(true);
-            JFrame frame = new JFrame("Calculadora");
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        contourCola contour = new contourCola("Calculadora", "1.0");
+        String menu = "";
+        do {
+            //apresentar opções de inicio de registo de aplicacao
+            System.out.println("#-----------------------------------------#");
+            System.out.println("#O que pretende fazer?                    #");
+            System.out.println("#-----------------------------------------#");
+            System.out.println("1 - Iniciar aplicação");
+            System.out.println("2 - Mostrar a Informação da Licença");
+            System.out.println("3 - Gerar Pedido de Licença");
+            System.out.println("4 - Sair da aplicação");
+            System.out.println("#-----------------------------------------#");
+            Scanner scan = new Scanner(System.in);
+            menu = scan.nextLine();
+            
+            switch(menu.toString()) {
+                case "1": 
+                    if(checkLicence(contour)) {
+                        JFrame.setDefaultLookAndFeelDecorated(true);
+                        JFrame frame = new JFrame("Calculadora");
+                        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-            CalculatorApplication p = new CalculatorApplication();
-            frame.setContentPane(p.makeCalculator());
+                        CalculatorApplication p = new CalculatorApplication();
+                        frame.setContentPane(p.makeCalculator());
 
-            frame.setResizable(false);
-            frame.pack(); //tem o mesmo efeito que: frame.setSize(frame.getPreferredSize());
-            frame.setVisible(true);
-        } else {
-            System.out.println("No Licence");
-        }
+                        frame.setResizable(false);
+                        frame.pack(); //tem o mesmo efeito que: frame.setSize(frame.getPreferredSize());
+                        frame.setVisible(true);
+                    } else {
+                        System.out.println("No Licence");
+                    }
+                    break;
+                case "2": 
+                    contour.showLicenseInfo();
+                    break;
+                case "3": 
+                    //apresentar opções de inicio de registo de aplicacao
+                    System.out.println("#-----------------------------------------#");
+                    System.out.println("#Pretende iniciar o seu registo?          #");
+                    System.out.println("#-----------------------------------------#");
+                    System.out.println("1 - Sim");
+                    System.out.println("2 - Não (Ou qualquer outra opção)");
+                    System.out.println("#-----------------------------------------#");
+                    String opcao = scan.nextLine();
+
+                    if (opcao.equals("1")) {
+                        contour.startRegistration();
+                    }
+
+                    break;
+                case "4": 
+                    System.out.println("A sair da aplicação");
+                    System.exit(0);
+                    break;
+                default: 
+                    break;
+                
+            }
+            
+        } while(!menu.equals("1") && !menu.equals("4"));
+        
     }
 }
 

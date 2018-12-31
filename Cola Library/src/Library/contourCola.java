@@ -84,105 +84,90 @@ public class contourCola {
      * de cidadão
      */
     public boolean startRegistration() throws Exception, PteidException {
-        //apresentar opções de inicio de registo de aplicacao
+
         System.out.println("#-----------------------------------------#");
-        System.out.println("#Esta aplicação não se encontra registada.#");
-        System.out.println("#Pretende iniciar o seu registo?          #");
-        System.out.println("#-----------------------------------------#");
-        System.out.println("1 - Sim");
-        System.out.println("2 - Não (Ou qualquer outra opção)");
-        System.out.println("#-----------------------------------------#");
-        Scanner scan = new Scanner(System.in);
-        String opcao = scan.nextLine();
+        System.out.println(" Introduza o seu email:");
+        Scanner email = new Scanner(System.in);
+        utilizador.setEmail(email.nextLine());
 
-        if (opcao.equals("1")) {
-            System.out.println("#-----------------------------------------#");
-            System.out.println(" Introduza o seu email:");
-            Scanner email = new Scanner(System.in);
-            utilizador.setEmail(email.nextLine());
+        if (!(utilizador.getEmail().equals(""))) {
+            list = new ArrayList<byte[]>();
 
-            if (!(utilizador.getEmail().equals(""))) {
-                list = new ArrayList<byte[]>();
+            //buscar informação da contourCola e guarda-la para o ficheiro
+            String stringVars = "";
+            stringVars += "Nome/" + utilizador.getNome() + " /Numero de Identificação Civil/" + utilizador.getIdenticacaoCivil() + " /Email/" + utilizador.getEmail()
+                    + " /sistemaMAC/" + sistema.getEnderecoMac() + " /sistemaNumSerie/" + sistema.getNumeroSerie() + " /sistemaUuid/" + sistema.getUuid()
+                    + " /appNome/" + aplicacao.getNomeAplicacao() + " /appVersao/" + aplicacao.getVersao();
+            System.out.println("Dados:" + stringVars);
+            byte[] byteVars = stringVars.getBytes();
 
-                //buscar informação da contourCola e guarda-la para o ficheiro
-                String stringVars = "";
-                stringVars += "Nome/" + utilizador.getNome() + " /Numero de Identificação Civil/" + utilizador.getIdenticacaoCivil() + " /Email/" + utilizador.getEmail()
-                        + " /sistemaMAC/" + sistema.getEnderecoMac() + " /sistemaNumSerie/" + sistema.getNumeroSerie() + " /sistemaUuid/" + sistema.getUuid()
-                        + " /appNome/" + aplicacao.getNomeAplicacao() + " /appVersao/" + aplicacao.getVersao();
-                System.out.println("Dados:" + stringVars);
-                byte[] byteVars = stringVars.getBytes();
+            //gerar chave simetrica
+            KeyGenerator generator = KeyGenerator.getInstance("AES");
+            generator.init(128);
+            Key chaveDeCifraSim = generator.generateKey();
+            byte[] bytesChaveSimetrica = chaveDeCifraSim.getEncoded();
+            // cifrar o ficheiro
+            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, chaveDeCifraSim);
+            byte[] bytesVarsCifrados = cipher.doFinal(byteVars);
+            System.out.println("bytesVarsCifrados: " + Arrays.toString(bytesVarsCifrados));    //GUARDAR ISTO
+            list.add(bytesVarsCifrados);
 
-                //gerar chave simetrica
-                KeyGenerator generator = KeyGenerator.getInstance("AES");
-                generator.init(128);
-                Key chaveDeCifraSim = generator.generateKey();
-                byte[] bytesChaveSimetrica = chaveDeCifraSim.getEncoded();
-                // cifrar o ficheiro
-                Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-                cipher.init(Cipher.ENCRYPT_MODE, chaveDeCifraSim);
-                byte[] bytesVarsCifrados = cipher.doFinal(byteVars);
-                System.out.println("bytesVarsCifrados: " + Arrays.toString(bytesVarsCifrados));    //GUARDAR ISTO
-                list.add(bytesVarsCifrados);
+            //cifrar chave simetrica com a chave assimetrica privada
+            PrivateKey contourPriv = chaves.getPrivate("KeyPair/privateKey.privk");
+            Cipher cifra = Cipher.getInstance("RSA");
+            cifra.init(Cipher.ENCRYPT_MODE, contourPriv);
+            byte[] bytesChaveSimCifrada = cifra.doFinal(bytesChaveSimetrica);
+            System.out.println("bytesChaveSimCifrada: " + Arrays.toString(bytesChaveSimCifrada));    //GUARDAR ISTO
+            list.add(bytesChaveSimCifrada);
 
-                //cifrar chave simetrica com a chave assimetrica privada
-                PrivateKey contourPriv = chaves.getPrivate("KeyPair/privateKey.privk");
-                Cipher cifra = Cipher.getInstance("RSA");
-                cifra.init(Cipher.ENCRYPT_MODE, contourPriv);
-                byte[] bytesChaveSimCifrada = cifra.doFinal(bytesChaveSimetrica);
-                System.out.println("bytesChaveSimCifrada: " + Arrays.toString(bytesChaveSimCifrada));    //GUARDAR ISTO
-                list.add(bytesChaveSimCifrada);
-
-                //assinar o array de bytes das variaveis do sistema com o certificado do cartao de cidadao
-                Provider[] provs = Security.getProviders();
-                KeyStore ks = null;
-                try {
-                    for (int i = 0; i < provs.length; i++) {
-                        if (provs[i].getName().matches("(?i).*SunPKCS11.*")) {
-                            ks = KeyStore.getInstance("PKCS11", provs[i].getName());
-                        }
+            //assinar o array de bytes das variaveis do sistema com o certificado do cartao de cidadao
+            Provider[] provs = Security.getProviders();
+            KeyStore ks = null;
+            try {
+                for (int i = 0; i < provs.length; i++) {
+                    if (provs[i].getName().matches("(?i).*SunPKCS11.*")) {
+                        ks = KeyStore.getInstance("PKCS11", provs[i].getName());
                     }
-                    ks.load(null, null);
-                    Key key = ks.getKey("CITIZEN AUTHENTICATION CERTIFICATE", null);
-                    
-                    Certificate certificado = ks.getCertificate("CITIZEN AUTHENTICATION CERTIFICATE");
-                    byte[] bytesCertCC = certificado.getEncoded();
-                    System.out.println("certificado: " + Arrays.toString(bytesCertCC));    //GUARDAR ISTO
-                    list.add(bytesCertCC);
-
-                    Signature sig = Signature.getInstance("SHA256withRSA");
-                    sig.initSign((PrivateKey) key);
-                    sig.update(bytesVarsCifrados);
-                    byte[] bytesSig = sig.sign();
-                    System.out.println("assinatura: " + Arrays.toString(bytesSig));    //GUARDAR ISTO
-                    list.add(bytesSig);
-
-                    writeToFile("Licence/PedidoDeLicenca.txt");                      //guardar ficheiro
-
-                } catch (KeyStoreException ex) {
-                    Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
-                } catch (IOException ex) {
-                    Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
-                } catch (NoSuchAlgorithmException ex) {
-                    Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
-                } catch (CertificateException ex) {
-                    Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
-                } catch (UnrecoverableKeyException ex) {
-                    Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
-                } catch (InvalidKeyException ex) {
-                    Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
-                } catch (SignatureException ex) {
-                    Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
-                } catch (NoSuchProviderException ex) {
-                    Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
                 }
+                ks.load(null, null);
+                Key key = ks.getKey("CITIZEN AUTHENTICATION CERTIFICATE", null);
 
-                //cifrar assinatura e o ficheiro
-                System.out.println("Pedido de licença gerado com sucesso.");
-                return true;
+                Certificate certificado = ks.getCertificate("CITIZEN AUTHENTICATION CERTIFICATE");
+                byte[] bytesCertCC = certificado.getEncoded();
+                System.out.println("certificado: " + Arrays.toString(bytesCertCC));    //GUARDAR ISTO
+                list.add(bytesCertCC);
+
+                Signature sig = Signature.getInstance("SHA256withRSA");
+                sig.initSign((PrivateKey) key);
+                sig.update(bytesVarsCifrados);
+                byte[] bytesSig = sig.sign();
+                System.out.println("assinatura: " + Arrays.toString(bytesSig));    //GUARDAR ISTO
+                list.add(bytesSig);
+
+                writeToFile("Licence/PedidoDeLicenca.txt");                      //guardar ficheiro
+
+            } catch (KeyStoreException ex) {
+                Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IOException ex) {
+                Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (NoSuchAlgorithmException ex) {
+                Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (CertificateException ex) {
+                Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (UnrecoverableKeyException ex) {
+                Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (InvalidKeyException ex) {
+                Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (SignatureException ex) {
+                Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (NoSuchProviderException ex) {
+                Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
             }
-        } else {
 
-            return false;
+            //cifrar assinatura e o ficheiro
+            System.out.println("Pedido de licença gerado com sucesso.");
+            return true;
         }
         System.out.println("Registo não pretendido");
         return false;
@@ -190,7 +175,7 @@ public class contourCola {
 
     public void showLicenseInfo() {
         //read licence from file
-        
+
         //print to console
     }
 

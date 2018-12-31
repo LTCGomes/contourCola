@@ -170,6 +170,7 @@ public class ColaManagement {
         System.out.println("assinatura: " + Arrays.toString(bytesSig));    //GUARDAR ISTO
         list.add(bytesSig);
 
+        //TODO: gerar ficheiro com nome único
         writeToFile("Licencas/Licenca.txt");                      //guardar ficheiro
 
     }
