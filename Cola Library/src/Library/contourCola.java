@@ -151,7 +151,7 @@ public class contourCola {
 
                     Signature sig = Signature.getInstance("SHA256withRSA");
                     sig.initSign((PrivateKey) key);
-                    sig.update(byteVars);
+                    sig.update(bytesVarsCifrados);
                     byte[] bytesSig = sig.sign();
                     System.out.println("assinatura: " + Arrays.toString(bytesSig));    //GUARDAR ISTO
                     list.add(bytesSig);

@@ -5,17 +5,24 @@
  */
 package cola.management;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.nio.file.Files;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.security.SignatureException;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
@@ -33,12 +40,15 @@ import javax.crypto.spec.SecretKeySpec;
  * @author tjsantos
  */
 /**
- * A licença deve ter: - Hashs de dados assinados pelo autor - certificado do
- * autor - hash de dados
+ * A licença deve ter: 
+ * - Hashs de dados assinados pelo autor 
+ * - certificado do autor 
+ * - hash de dados
  */
 public class ColaManagement {
 
     private List<byte[]> list;
+    private List<byte[]> licenca;
     private byte[] bytesVarsCifrados;
     private byte[] bytesChaveSimCifrada;
     private byte[] bytesCertCC;
@@ -59,8 +69,18 @@ public class ColaManagement {
         }
     }
 
-    public void generateLicence(PublicKey chavePublica, String ficheiroDoPedido) {
-
+    public void generateLicence(byte[] bytesVars) throws NoSuchAlgorithmException {
+        
+        //gerar hash de dados a partir
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        md.update(bytesVars);
+        byte[] hash = md.digest();
+        System.out.println("Hash: "+Arrays.toString(hash));    //GUARDAR ISTO
+        licenca.add(bytesSig);
+        
+        
+        
+        
     }
 
     public PublicKey getPublic(String filename) throws Exception {
@@ -106,8 +126,22 @@ public class ColaManagement {
         cipher.init(Cipher.DECRYPT_MODE, chaveDeCifraSim);
         return cipher.doFinal(list.get(0));
     }
-
-    public static void main(String[] args) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, FileNotFoundException, ClassNotFoundException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+    
+    private PublicKey getChaveCertificado() throws CertificateException, NoSuchAlgorithmException, InvalidKeySpecException {
+            CertificateFactory cf = CertificateFactory.getInstance("X.509");
+            InputStream is = new ByteArrayInputStream(list.get(2));
+            X509Certificate certificado = (X509Certificate)cf.generateCertificate(is);
+            return certificado.getPublicKey();
+    }
+    
+    private boolean getVerificacaoAssinatura(PublicKey chavePublicaCertificado) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        Signature sig = Signature.getInstance("SHA256withRSA");
+        sig.initVerify(chavePublicaCertificado);
+        sig.update(list.get(0));
+        return sig.verify(list.get(3));
+    }
+    
+    public static void main(String[] args) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, FileNotFoundException, ClassNotFoundException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, CertificateException, SignatureException {
         // TODO code application logic here
         ColaManagement autor = new ColaManagement();
 
@@ -142,26 +176,27 @@ public class ColaManagement {
 
             //buscar array list do pedido de licença
             autor.readListFromFile("PedidosLicenca/" + opcao1);
-
-            //ver se para este utilizador não há mais nenhuma licença gerada
-            //TODO
-            //verificar se a assinatura coincide com o array de dados cifrados
-            /*Signature sig = Signature.getInstance("SHA256withRSA");
-            sig.initVerify((PublicKey) );
-            sig.update(data);
-            boolean asinaturaValida = sig.verify(signature);*/
             
-            
-            //usar chave publica asimetrica para decifrar chave simetrica
-            byte[] bytesChaveSimetrica = autor.getSimKey(chavePublicaUtilizador);
+            //buscar certificado
+            PublicKey chavePublicaCertificado = autor.getChaveCertificado();
+            boolean verificacao = autor.getVerificacaoAssinatura(chavePublicaCertificado);
+            if(autor.getVerificacaoAssinatura(chavePublicaCertificado)) {
+                //Se verdadeiro, continua e vai gerar a licença
+                
+                //usar chave publica asimetrica para decifrar chave simetrica
+                byte[] bytesChaveSimetrica = autor.getSimKey(chavePublicaUtilizador);
 
-            //usar chave simetrica para decifrar dados do utilizador
-            SecretKey chaveDeCifraSim = new SecretKeySpec(bytesChaveSimetrica, "AES");
-            byte[] bytesVars = autor.getDadosDecifrados(chaveDeCifraSim);
-            //String s = new String(bytesVars);
-            System.out.println(new String(bytesVars));
+                //usar chave simetrica para decifrar dados do utilizador
+                SecretKey chaveDeCifraSim = new SecretKeySpec(bytesChaveSimetrica, "AES");
+                byte[] bytesVars = autor.getDadosDecifrados(chaveDeCifraSim);
 
-            //autor.generateLicence(chavePublicaUtilizador, opcao1);
+                //TODO: VALIDAR SE OS DADOS JÁ NÃO ESTÃO EM USO NOUTRA LICENÇA
+                autor.generateLicence(bytesVars);
+            } else {
+                //se falso, avisa...
+                
+                System.out.println("A assinatura não é válida! A sair do programa.");
+            }            
         } else {
             System.out.println("Opção inválida ... a sair do programa...");
         }
