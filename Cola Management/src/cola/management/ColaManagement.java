@@ -9,25 +9,35 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.KeyFactory;
+import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.Provider;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -35,6 +45,7 @@ import java.util.Scanner;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -55,10 +66,9 @@ import sun.security.x509.X509CertInfo;
  * @author tjsantos
  */
 /**
- * A licença deve ter: 
- * - Hashs de dados assinados pelo autor 
- * - certificado do autor 
- * - hash de dados
+ * A licença deve ter: - certificado - assinatura do hash dos dados cifrados -
+ * chaves simetricas cifradas com chave assimetrica - validade cifrada com chave
+ * simetrica - hash de dados cifrados com chave simetrica
  */
 public class ColaManagement {
 
@@ -83,7 +93,7 @@ public class ColaManagement {
         if (!new File("Licencas").isDirectory()) {
             new File("Licencas").mkdir();
         }
-        
+
         chaves = new GenerateKeys(1024);
         if (!new File("keyPair").isDirectory()) {
             new File("keyPair").mkdir();
@@ -95,49 +105,73 @@ public class ColaManagement {
         }
     }
     
-    public X509Certificate generateCertificate() throws Exception {
-        PrivateKey privkey = chaves.getPrivate("KeyPair/privateKey.privk");
-        X509CertInfo info = new X509CertInfo();
-        Date from = new Date();
-        //validade de certificados de 1 ano
-        Date to = new Date(from.getTime() + 365 * 86400000l);
-        CertificateValidity interval = new CertificateValidity(from, to);
-        BigInteger sn = new BigInteger(64, new SecureRandom());
-        X500Name owner = new X500Name("Contour Management");
-
-        info.set(X509CertInfo.VALIDITY, interval);
-        info.set(X509CertInfo.SERIAL_NUMBER, new CertificateSerialNumber(sn));
-        info.set(X509CertInfo.SUBJECT, new CertificateSubjectName(owner));
-        info.set(X509CertInfo.ISSUER, new CertificateIssuerName(owner));
-        info.set(X509CertInfo.KEY, new CertificateX509Key(chaves.getPublic("KeyPair/publicKey.publick")));
-        info.set(X509CertInfo.VERSION, new CertificateVersion(CertificateVersion.V3));
-        AlgorithmId algo = new AlgorithmId(AlgorithmId.md5WithRSAEncryption_oid);
-        info.set(X509CertInfo.ALGORITHM_ID, new CertificateAlgorithmId(algo));
-
-        // Sign the cert to identify the algorithm that's used.
-        X509CertImpl cert = new X509CertImpl(info);
-        cert.sign(privkey, "SHA1withRSA");
-
-        // Update the algorith, and resign.
-        algo = (AlgorithmId)cert.get(X509CertImpl.SIG_ALG);
-        info.set(CertificateAlgorithmId.NAME + "." + CertificateAlgorithmId.ALGORITHM, algo);
-        cert = new X509CertImpl(info);
-        cert.sign(privkey, "SHA1withRSA");
-        return cert;
-    }  
+    private void writeToFile(String filename) throws FileNotFoundException, IOException {
+        File f = new File(filename);
+        f.getParentFile().mkdirs();
+        ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(f));
+        out.writeObject(list);
+        out.close();
+    }
 
     public void generateLicence(byte[] bytesVars) throws NoSuchAlgorithmException, Exception {
-        
-        //gerar hash de dados a partir
-        MessageDigest md = MessageDigest.getInstance("MD5");
-        md.update(bytesVars);
-        byte[] hash = md.digest();
-        System.out.println("Hash: "+Arrays.toString(hash));    //GUARDAR ISTO
-        licenca.add(bytesSig);
-        
-        //gerar certificado com validade de 1 ano
-        X509Certificate cert = generateCertificate();
-        
+
+        licenca = new ArrayList<byte[]>();
+
+        //criar o intervalo de tempo e guarda-lo
+        DateFormat df = new SimpleDateFormat("dd-MM-yyyy");
+        Date dataFrom = new Date();
+        Date dataTo = new Date(dataFrom.getTime() + 365 * 86400000l);
+
+        String dados = new String(bytesVars);
+        dados += "/ValidadeDe/" + df.format(dataFrom) + "/ValidadeAte/" + df.format(dataTo);
+        System.out.println(dados);
+        byte[] byteVars = dados.getBytes();
+
+        //gerar chave simetrica
+        KeyGenerator generator = KeyGenerator.getInstance("AES");
+        generator.init(128);
+        Key chaveDeCifraSim = generator.generateKey();
+        byte[] bytesChaveSimetrica = chaveDeCifraSim.getEncoded();
+        // cifrar o ficheiro
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+        cipher.init(Cipher.ENCRYPT_MODE, chaveDeCifraSim);
+        byte[] bytesVarsCifrados = cipher.doFinal(byteVars);
+        System.out.println("bytesVarsCifrados: " + Arrays.toString(bytesVarsCifrados));    //GUARDAR ISTO
+        list.add(bytesVarsCifrados);
+
+        //cifrar chave simetrica com a chave assimetrica privada
+        PrivateKey contourPriv = chaves.getPrivate("KeyPair/privateKey.privk");
+        Cipher cifra = Cipher.getInstance("RSA");
+        cifra.init(Cipher.ENCRYPT_MODE, contourPriv);
+        byte[] bytesChaveSimCifrada = cifra.doFinal(bytesChaveSimetrica);
+        System.out.println("bytesChaveSimCifrada: " + Arrays.toString(bytesChaveSimCifrada));    //GUARDAR ISTO
+        list.add(bytesChaveSimCifrada);
+
+        //assinar o array de bytes das variaveis do sistema com o certificado do cartao de cidadao
+        Provider[] provs = Security.getProviders();
+        KeyStore ks = null;
+        for (int i = 0; i < provs.length; i++) {
+            if (provs[i].getName().matches("(?i).*SunPKCS11.*")) {
+                ks = KeyStore.getInstance("PKCS11", provs[i].getName());
+            }
+        }
+        ks.load(null, null);
+        Key key = ks.getKey("CITIZEN AUTHENTICATION CERTIFICATE", null);
+
+        Certificate certificado = ks.getCertificate("CITIZEN AUTHENTICATION CERTIFICATE");
+        byte[] bytesCertCC = certificado.getEncoded();
+        System.out.println("certificado: " + Arrays.toString(bytesCertCC));    //GUARDAR ISTO
+        list.add(bytesCertCC);
+
+        Signature sig = Signature.getInstance("SHA256withRSA");
+        sig.initSign((PrivateKey) key);
+        sig.update(bytesVarsCifrados);
+        byte[] bytesSig = sig.sign();
+        System.out.println("assinatura: " + Arrays.toString(bytesSig));    //GUARDAR ISTO
+        list.add(bytesSig);
+
+        writeToFile("Licencas/Licenca.txt");                      //guardar ficheiro
+
     }
 
     public PublicKey getPublic(String filename) throws Exception {
@@ -165,10 +199,10 @@ public class ColaManagement {
         bytesCertCC = list.get(2);
         bytesSig = list.get(3);
         System.out.println("============");
-        System.out.println("array bytes bytesVarsCifrados: "+Arrays.toString(list.get(0)));
-        System.out.println("array bytes bytesChaveSimCifrada: "+Arrays.toString(list.get(1)));
-        System.out.println("array bytes certificado: "+Arrays.toString(list.get(2)));
-        System.out.println("array bytes assinatura: "+Arrays.toString(list.get(3)));
+        System.out.println("array bytes bytesVarsCifrados: " + Arrays.toString(list.get(0)));
+        System.out.println("array bytes bytesChaveSimCifrada: " + Arrays.toString(list.get(1)));
+        System.out.println("array bytes certificado: " + Arrays.toString(list.get(2)));
+        System.out.println("array bytes assinatura: " + Arrays.toString(list.get(3)));
         System.out.println("============");
     }
 
@@ -183,21 +217,21 @@ public class ColaManagement {
         cipher.init(Cipher.DECRYPT_MODE, chaveDeCifraSim);
         return cipher.doFinal(list.get(0));
     }
-    
+
     private PublicKey getChaveCertificado() throws CertificateException, NoSuchAlgorithmException, InvalidKeySpecException {
-            CertificateFactory cf = CertificateFactory.getInstance("X.509");
-            InputStream is = new ByteArrayInputStream(list.get(2));
-            X509Certificate certificado = (X509Certificate)cf.generateCertificate(is);
-            return certificado.getPublicKey();
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        InputStream is = new ByteArrayInputStream(list.get(2));
+        X509Certificate certificado = (X509Certificate) cf.generateCertificate(is);
+        return certificado.getPublicKey();
     }
-    
+
     private boolean getVerificacaoAssinatura(PublicKey chavePublicaCertificado) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
         Signature sig = Signature.getInstance("SHA256withRSA");
         sig.initVerify(chavePublicaCertificado);
         sig.update(list.get(0));
         return sig.verify(list.get(3));
     }
-    
+
     public static void main(String[] args) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, FileNotFoundException, ClassNotFoundException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, CertificateException, SignatureException, Exception {
         // TODO code application logic here
         ColaManagement autor = new ColaManagement();
@@ -233,13 +267,13 @@ public class ColaManagement {
 
             //buscar array list do pedido de licença
             autor.readListFromFile("PedidosLicenca/" + opcao1);
-            
+
             //buscar certificado
             PublicKey chavePublicaCertificado = autor.getChaveCertificado();
             boolean verificacao = autor.getVerificacaoAssinatura(chavePublicaCertificado);
-            if(autor.getVerificacaoAssinatura(chavePublicaCertificado)) {
+            if (autor.getVerificacaoAssinatura(chavePublicaCertificado)) {
                 //Se verdadeiro, continua e vai gerar a licença
-                
+
                 //usar chave publica asimetrica para decifrar chave simetrica
                 byte[] bytesChaveSimetrica = autor.getSimKey(chavePublicaUtilizador);
 
@@ -248,13 +282,12 @@ public class ColaManagement {
                 byte[] bytesVars = autor.getDadosDecifrados(chaveDeCifraSim);
 
                 //TODO: VALIDAR SE OS DADOS JÁ NÃO ESTÃO EM USO NOUTRA LICENÇA
-                
                 autor.generateLicence(bytesVars);
             } else {
                 //se falso, avisa...
-                
+
                 System.out.println("A assinatura não é válida! A sair do programa.");
-            }            
+            }
         } else {
             System.out.println("Opção inválida ... a sair do programa...");
         }
