@@ -14,18 +14,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.math.BigInteger;
 import java.nio.file.Files;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyStore;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.PublicKey;
-import java.security.SecureRandom;
 import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
@@ -49,17 +46,6 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import sun.security.x509.AlgorithmId;
-import sun.security.x509.CertificateAlgorithmId;
-import sun.security.x509.CertificateIssuerName;
-import sun.security.x509.CertificateSerialNumber;
-import sun.security.x509.CertificateSubjectName;
-import sun.security.x509.CertificateValidity;
-import sun.security.x509.CertificateVersion;
-import sun.security.x509.CertificateX509Key;
-import sun.security.x509.X500Name;
-import sun.security.x509.X509CertImpl;
-import sun.security.x509.X509CertInfo;
 
 /**
  *
@@ -86,25 +72,25 @@ public class ColaManagement {
     public ColaManagement() throws NoSuchAlgorithmException, IOException {
         if (!new File("PedidosLicenca").isDirectory()) {
             new File("PedidosLicenca").mkdir();
-            if (!new File("PedidosLicenca/Keys").isDirectory()) {
-                new File("PedidosLicenca/Keys").mkdir();
-            }
+        }
+        if (!new File("PedidosLicenca/Keys").isDirectory()) {
+            new File("PedidosLicenca/Keys").mkdir();
         }
         if (!new File("Licencas").isDirectory()) {
             new File("Licencas").mkdir();
         }
-
-        chaves = new GenerateKeys(1024);
-        if (!new File("keyPair").isDirectory()) {
-            new File("keyPair").mkdir();
-            if (!new File("keyPair/publicKey.publick").exists() && !new File("keyPair/privateKey.privk").exists()) {
-                chaves.createKeys();
-                chaves.writeKeysToFile("KeyPair/publicKey.publick", chaves.getPublicKey().getEncoded());
-                chaves.writeKeysToFile("KeyPair/privateKey.privk", chaves.getPrivateKey().getEncoded());
-            }
+        if (!new File("Licencas/Keys").isDirectory()) {
+            new File("Licencas/Keys").mkdir();
         }
+        chaves = new GenerateKeys(1024);
+        if (!new File("Licencas/Keys/publicKey.publick").exists() && !new File("Licencas/Keys/privateKey.privk").exists()) {
+            chaves.createKeys();
+            chaves.writeKeysToFile("Licencas/Keys/publicKey.publick", chaves.getPublicKey().getEncoded());
+            chaves.writeKeysToFile("Licencas/Keys/privateKey.privk", chaves.getPrivateKey().getEncoded());
+        }
+
     }
-    
+
     private void writeToFile(String filename) throws FileNotFoundException, IOException {
         File f = new File(filename);
         f.getParentFile().mkdirs();
@@ -123,7 +109,7 @@ public class ColaManagement {
         Date dataTo = new Date(dataFrom.getTime() + 365 * 86400000l);
 
         String dados = new String(bytesVars);
-        dados += "/ValidadeDe/" + df.format(dataFrom) + "/ValidadeAte/" + df.format(dataTo);
+        dados += "\n Licença válida de:" + df.format(dataFrom) + " até " + df.format(dataTo);
         System.out.println(dados);
         byte[] byteVars = dados.getBytes();
 
@@ -140,9 +126,9 @@ public class ColaManagement {
         list.add(bytesVarsCifrados);
 
         //cifrar chave simetrica com a chave assimetrica privada
-        PrivateKey contourPriv = chaves.getPrivate("KeyPair/privateKey.privk");
+        PrivateKey autorPriv = chaves.getPrivate("Licencas/Keys/privateKey.privk");
         Cipher cifra = Cipher.getInstance("RSA");
-        cifra.init(Cipher.ENCRYPT_MODE, contourPriv);
+        cifra.init(Cipher.ENCRYPT_MODE, autorPriv);
         byte[] bytesChaveSimCifrada = cifra.doFinal(bytesChaveSimetrica);
         System.out.println("bytesChaveSimCifrada: " + Arrays.toString(bytesChaveSimCifrada));    //GUARDAR ISTO
         list.add(bytesChaveSimCifrada);

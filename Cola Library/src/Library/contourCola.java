@@ -6,24 +6,29 @@
 package Library;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.Provider;
+import java.security.PublicKey;
 import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -47,6 +52,7 @@ public class contourCola {
     private Utilizador utilizador;
     private GenerateKeys chaves;
     private List<byte[]> list;
+    private List<byte[]> licenca;
 
     public contourCola(String nomeAplicacao, String versao) throws NoSuchAlgorithmException, IOException, Exception, PteidException {
         Utilizador.loadPteidLib();
@@ -59,15 +65,29 @@ public class contourCola {
         }
         sistema = new Sistema();
         aplicacao = new Aplicacao(nomeAplicacao, versao, "", "");
-        chaves = new GenerateKeys(1024);
-        if (!new File("keyPair").isDirectory()) {
-            new File("keyPair").mkdir();
-            if (!new File("keyPair/publicKey.publick").exists() && !new File("keyPair/privateKey.privk").exists()) {
-                chaves.createKeys();
-                chaves.writeKeysToFile("KeyPair/publicKey.publick", chaves.getPublicKey().getEncoded());
-                chaves.writeKeysToFile("KeyPair/privateKey.privk", chaves.getPrivateKey().getEncoded());
-            }
+
+        if (!new File("PedidosLicenca").isDirectory()) {
+            new File("PedidosLicenca").mkdir();
         }
+        if (!new File("PedidosLicenca/Keys").isDirectory()) {
+            new File("PedidosLicenca/Keys").mkdir();
+        }
+        chaves = new GenerateKeys(1024);
+        if (!new File("PedidosLicenca/Keys/publicKey.publick").exists() && !new File("PedidosLicenca/Keys/privateKey.privk").exists()) {
+            chaves.createKeys();
+            chaves.writeKeysToFile("PedidosLicenca/Keys/publicKey.publick", chaves.getPublicKey().getEncoded());
+            chaves.writeKeysToFile("PedidosLicenca/Keys/privateKey.privk", chaves.getPrivateKey().getEncoded());
+
+        }
+        if (!new File("Licencas").isDirectory()) {
+            new File("Licencas").mkdir();
+
+        }
+        if (!new File("Licencas/Keys").isDirectory()) {
+            new File("Licencas/Keys").mkdir();
+
+        }
+
     }
 
     public boolean isRegister() {
@@ -87,18 +107,20 @@ public class contourCola {
 
         System.out.println("#-----------------------------------------#");
         System.out.println(" Introduza o seu email:");
+        
         Scanner email = new Scanner(System.in);
         utilizador.setEmail(email.nextLine());
-
+        
         if (!(utilizador.getEmail().equals(""))) {
             list = new ArrayList<byte[]>();
 
             //buscar informação da contourCola e guarda-la para o ficheiro
+            System.out.println("#-----------------------------------------#\n");
             String stringVars = "";
-            stringVars += "Nome/" + utilizador.getNome() + " /Numero de Identificação Civil/" + utilizador.getIdenticacaoCivil() + " /Email/" + utilizador.getEmail()
-                    + " /sistemaMAC/" + sistema.getEnderecoMac() + " /sistemaNumSerie/" + sistema.getNumeroSerie() + " /sistemaUuid/" + sistema.getUuid()
-                    + " /appNome/" + aplicacao.getNomeAplicacao() + " /appVersao/" + aplicacao.getVersao();
-            System.out.println("Dados:" + stringVars);
+            stringVars += " Dados do Utilizador \n Nome:" + utilizador.getNome() + "    Numero de Identificação Civil:" + utilizador.getIdenticacaoCivil() + "    Email:" + utilizador.getEmail()
+                    + "\n Dados do Sistema \n Endereço MAC:" + sistema.getEnderecoMac() + "    Número de Série:" + sistema.getNumeroSerie() + "   Identificador Único Universal:" + sistema.getUuid()
+                    + "\n Dados da Aplicação \n Nome da aplicação:" + aplicacao.getNomeAplicacao() + "     Versão da Aplicação:" + aplicacao.getVersao();
+            System.out.println(stringVars);
             byte[] byteVars = stringVars.getBytes();
 
             //gerar chave simetrica
@@ -114,7 +136,7 @@ public class contourCola {
             list.add(bytesVarsCifrados);
 
             //cifrar chave simetrica com a chave assimetrica privada
-            PrivateKey contourPriv = chaves.getPrivate("KeyPair/privateKey.privk");
+            PrivateKey contourPriv = chaves.getPrivate("PedidosLicenca/Keys/privateKey.privk");
             Cipher cifra = Cipher.getInstance("RSA");
             cifra.init(Cipher.ENCRYPT_MODE, contourPriv);
             byte[] bytesChaveSimCifrada = cifra.doFinal(bytesChaveSimetrica);
@@ -145,7 +167,7 @@ public class contourCola {
                 System.out.println("assinatura: " + Arrays.toString(bytesSig));    //GUARDAR ISTO
                 list.add(bytesSig);
 
-                writeToFile("Licence/PedidoDeLicenca.txt");                      //guardar ficheiro
+                writeToFile("PedidosLicenca/PedidoDeLicenca.txt");                      //guardar ficheiro
 
             } catch (KeyStoreException ex) {
                 Logger.getLogger(contourCola.class.getName()).log(Level.SEVERE, null, ex);
@@ -173,9 +195,45 @@ public class contourCola {
         return false;
     }
 
-    public void showLicenseInfo() {
+    public void showLicenseInfo() throws NoSuchAlgorithmException, InvalidKeySpecException, IOException {
         //read licence from file
+        System.out.println("#--------------------------------------------#");
+        System.out.println("#Certifique-se que tem os ficheiros de       #");
+        System.out.println("#pedidos de licença na pasta 'Licenca'       #");
+        System.out.println("#e a chave publica respetiva na pasta 'Keys' #");
+        System.out.println("#--------------------------------------------#");
+        System.out.println("#Qual o ficheiro de licenca?                 #");
+        System.out.println("#--------------------------------------------#");
+        Scanner scan = new Scanner(System.in);
+        String opcao1 = scan.nextLine();
+        File fileLicenca = new File("Licencas/Licenca.txt");
+        boolean exists = fileLicenca.exists();
+        if (fileLicenca.exists() && fileLicenca.isFile()) {
+            System.out.println("O ficheiro Licenca existe ");
+        } else {
+            System.out.println("O ficheiro Licenca não se encontra na pasta 'Licencas/'. \n");
+            System.exit(0);
+        }
+        System.out.println("#--------------------------------------------#");
+        System.out.println("#Qual o ficheiro da chave publica do autor?  #");
+        System.out.println("#--------------------------------------------#");
+        String opcao2 = scan.nextLine();
+        File fileKeys = new File("Licencas/Keys/publicKey.publick");
+        if (fileKeys.exists() && fileKeys.isFile()) {
+            System.out.println("O ficheiro com a chave publica existe ");
+        } else {
+            System.out.println("O ficheiro com a chave pública não se encontra na pasta 'Licencas/Keys/'. \n");
+            System.exit(0);
+        }
 
+        //buscar chave publica ao ficheiro
+        byte[] bytesChavePublicaUtilizador = readFromFile("Licencas/Keys/" + opcao2);
+        KeyFactory keyfa = KeyFactory.getInstance("RSA");
+        X509EncodedKeySpec xek = new X509EncodedKeySpec(bytesChavePublicaUtilizador);
+        PublicKey chavePublicaUtilizador = keyfa.generatePublic(xek);
+
+        //buscar a chave simetrica a partir da chave publica
+        //decifrar os dados com a chave simetrica
         //print to console
     }
 
@@ -185,5 +243,14 @@ public class contourCola {
         ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(f));
         out.writeObject(list);
         out.close();
+    }
+
+    public byte[] readFromFile(String fileName) throws FileNotFoundException, IOException {
+        File file = new File(fileName);
+        byte[] ba = new byte[(int) file.length()];
+        FileInputStream fis = new FileInputStream(file);
+        fis.read(ba);
+        fis.close();
+        return ba;
     }
 }
