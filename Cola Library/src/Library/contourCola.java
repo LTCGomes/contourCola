@@ -5,11 +5,14 @@
  */
 package Library;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -27,18 +30,23 @@ import java.security.SignatureException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Enumeration;
 import java.util.List;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import pteidlib.PteidException;
 
 /**
@@ -90,8 +98,51 @@ public class contourCola {
 
     }
 
-    public boolean isRegister() {
+    public boolean isRegister() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, FileNotFoundException, ClassNotFoundException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, CertificateException, SignatureException {
         //read licence from file
+
+        System.out.println("#--------------------------------------------#");
+        System.out.println("#Certifique-se que tem os ficheiros de       #");
+        System.out.println("#pedidos de licença na pasta 'Licenca'       #");
+        System.out.println("#e a chave publica respetiva na pasta 'Keys' #");
+        System.out.println("#--------------------------------------------#");
+        System.out.println("#Qual o ficheiro de licenca?                 #");
+        System.out.println("#--------------------------------------------#");
+        Scanner scan = new Scanner(System.in);
+        String opcao1 = scan.nextLine();
+        System.out.println("#--------------------------------------------#");
+        System.out.println("#Qual o ficheiro da chave publica do autor?  #");
+        System.out.println("#--------------------------------------------#");
+        String opcao2 = scan.nextLine();
+
+        byte[] bytesChavePublicaAutor = readFromFile("Licencas/Keys/" + opcao2);
+        KeyFactory keyfa = KeyFactory.getInstance("RSA");
+        X509EncodedKeySpec xek = new X509EncodedKeySpec(bytesChavePublicaAutor);
+        PublicKey chavePublicaAutor = keyfa.generatePublic(xek);
+
+        //buscar array list do pedido de licença
+        readListFromFile("Licencas/" + opcao1);
+
+        //buscar certificado
+        PublicKey chavePublicaCertificado = getChaveCertificado();
+        
+        //verificar assinatura        
+        if (getVerificacaoAssinatura(chavePublicaCertificado)) {
+
+            //usar chave publica asimetrica para decifrar chave simetrica
+            byte[] bytesChaveSimetrica = getSimKey(chavePublicaAutor);
+
+            //usar chave simetrica para decifrar dados do utilizador
+            SecretKey chaveDeCifraSim = new SecretKeySpec(bytesChaveSimetrica, "AES");
+            byte[] bytesVars = getDadosDecifrados(chaveDeCifraSim);
+
+            System.out.println(new String(bytesVars));
+            return true;
+        } else {
+            //se falso, avisa...
+
+            System.out.println("A assinatura não é válida! A sair do programa.");
+        }
 
         //if contourCola information equals licence information -> return true
         return false;
@@ -107,10 +158,10 @@ public class contourCola {
 
         System.out.println("#-----------------------------------------#");
         System.out.println(" Introduza o seu email:");
-        
+
         Scanner email = new Scanner(System.in);
         utilizador.setEmail(email.nextLine());
-        
+
         if (!(utilizador.getEmail().equals(""))) {
             list = new ArrayList<byte[]>();
 
@@ -252,5 +303,47 @@ public class contourCola {
         fis.read(ba);
         fis.close();
         return ba;
+    }
+
+    public void readListFromFile(String filename) throws FileNotFoundException, IOException, ClassNotFoundException {
+        ObjectInputStream in = new ObjectInputStream(new FileInputStream(filename));
+        this.licenca = (List<byte[]>) in.readObject();
+        in.close();
+        /*bytesVarsCifrados = list.get(0);
+        bytesChaveSimCifrada = list.get(1);
+        bytesCertCC = list.get(2);
+        bytesSig = list.get(3);*/
+        System.out.println("============");
+        System.out.println("array bytes bytesVarsCifrados: " + Arrays.toString(licenca.get(0)));
+        System.out.println("array bytes bytesChaveSimCifrada: " + Arrays.toString(licenca.get(1)));
+        System.out.println("array bytes bytesCertCC: " + Arrays.toString(licenca.get(2)));
+        System.out.println("array bytes bytesSig: " + Arrays.toString(licenca.get(3)));
+        System.out.println("============");
+    }
+    
+    public byte[] getDadosDecifrados(SecretKey chaveDeCifraSim) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+        cipher.init(Cipher.DECRYPT_MODE, chaveDeCifraSim);
+        return cipher.doFinal(licenca.get(0));
+    }
+
+    private PublicKey getChaveCertificado() throws CertificateException, NoSuchAlgorithmException, InvalidKeySpecException {
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        InputStream is = new ByteArrayInputStream(licenca.get(2));
+        X509Certificate certificado = (X509Certificate) cf.generateCertificate(is);
+        return certificado.getPublicKey();
+    }
+
+    private boolean getVerificacaoAssinatura(PublicKey chavePublicaCertificado) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+        Signature sig = Signature.getInstance("SHA256withRSA");
+        sig.initVerify(chavePublicaCertificado);
+        sig.update(licenca.get(0));
+        return sig.verify(licenca.get(3));
+    }
+    
+    public byte[] getSimKey(PublicKey chavePublicaUtilizador) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Cipher cifra = Cipher.getInstance("RSA/None/OAEPWithSHA1AndMGF1Padding");
+        cifra.init(Cipher.DECRYPT_MODE, chavePublicaUtilizador);
+        return cifra.doFinal(licenca.get(1));
     }
 }

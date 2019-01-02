@@ -127,7 +127,7 @@ public class ColaManagement {
 
         //cifrar chave simetrica com a chave assimetrica privada
         PrivateKey autorPriv = chaves.getPrivate("Licencas/Keys/privateKey.privk");
-        Cipher cifra = Cipher.getInstance("RSA");
+        Cipher cifra = Cipher.getInstance("RSA/None/OAEPWithSHA1AndMGF1Padding");
         cifra.init(Cipher.ENCRYPT_MODE, autorPriv);
         byte[] bytesChaveSimCifrada = cifra.doFinal(bytesChaveSimetrica);
         System.out.println("bytesChaveSimCifrada: " + Arrays.toString(bytesChaveSimCifrada));    //GUARDAR ISTO
