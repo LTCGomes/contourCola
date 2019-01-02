@@ -124,7 +124,7 @@ public class ColaManagement {
         System.out.println("========================================================");
         byte[] byteVars = dados.getBytes();
         
-        //teste!!!
+        //Para testes por causa do erro ao decifrar!!!
         //chaves.writeKeysToFile("teste.txt", byteVars);
 
         //gerar chave simetrica

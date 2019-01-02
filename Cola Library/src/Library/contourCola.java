@@ -139,6 +139,9 @@ public class contourCola {
             SecretKey chaveDeCifraSim = new SecretKeySpec(bytesChaveSimetrica, "AES");
             byte[] bytesVars = getDadosDecifrados(chaveDeCifraSim);
             
+            //Para testes por causa do erro ao decifrar!!!
+            //byte[] bytesVars = readFromFile("Licencas/teste.txt");
+            
             //verificar dados com os do sistema
             String[] dados = new String(bytesVars).split("\n");
 
@@ -154,8 +157,8 @@ public class contourCola {
                 return false;
             }
 
-            //Dados Aplicacao -> Adicionar hash da aplicação e da biblioteca em vez de nome e versão
-            if (!dados[14].contains(aplicacao.getHashAplicacao()) && !dados[15].contains(aplicacao.getHashBiblioteca())) {
+            //Dados Aplicacao
+            if (!dados[14].contains(aplicacao.getHashAplicacao())) {
                 System.out.println("Licenca Inválida: Aplicação diferente para o qual a licença foi imprimida");
                 return false;
             }
@@ -176,9 +179,6 @@ public class contourCola {
 
             System.out.println("A assinatura não é válida! A sair do programa.");
         }
-        
-        //teste!!!
-        //byte[] dadosTeste = readFromFile("Licencas/teste.txt");
         
         return false;
     }
