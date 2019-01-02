@@ -110,7 +110,9 @@ public class ColaManagement {
 
         String dados = new String(bytesVars);
         dados += "\n Licença válida de:" + df.format(dataFrom) + " até " + df.format(dataTo);
-        System.out.println(dados);
+        System.out.println("========================================================");
+        System.out.println("Ficheiro Licença\n " + dados);
+        System.out.println("========================================================");
         byte[] byteVars = dados.getBytes();
 
         //gerar chave simetrica
@@ -157,8 +159,12 @@ public class ColaManagement {
         list.add(bytesSig);
 
         //TODO: gerar ficheiro com nome único
-        writeToFile("Licencas/Licenca.txt");                      //guardar ficheiro
-
+        writeToFile("Licencas/Licenca.txt");
+        File fileLicenca = new File("Licencas/Licenca.txt");
+        boolean exists = fileLicenca.exists();
+        if (fileLicenca.exists() && fileLicenca.isFile()) {
+            System.out.println("A licença foi criada com sucesso.");
+        }
     }
 
     public PublicKey getPublic(String filename) throws Exception {
@@ -185,12 +191,7 @@ public class ColaManagement {
         bytesChaveSimCifrada = list.get(1);
         bytesCertCC = list.get(2);
         bytesSig = list.get(3);
-        System.out.println("============");
-        System.out.println("array bytes bytesVarsCifrados: " + Arrays.toString(list.get(0)));
-        System.out.println("array bytes bytesChaveSimCifrada: " + Arrays.toString(list.get(1)));
-        System.out.println("array bytes certificado: " + Arrays.toString(list.get(2)));
-        System.out.println("array bytes assinatura: " + Arrays.toString(list.get(3)));
-        System.out.println("============");
+
     }
 
     public byte[] getSimKey(PublicKey chavePublicaUtilizador) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
@@ -234,56 +235,69 @@ public class ColaManagement {
 
         if (opcao.equals("1")) {
 
-            System.out.println("#------------------------------------------------#");
-            System.out.println("#Certifique-se que tem os ficheiros de       #");
-            System.out.println("#pedidos de licença na pasta 'PedidosLicenca'#");
-            System.out.println("#e a chave publica respetiva na pasta 'Keys' #");
-            System.out.println("#--------------------------------------------#");
-            System.out.println("#Qual o ficheiro de pedido de licença?       #");
-            System.out.println("#--------------------------------------------#");
+            System.out.println("#-----------------------------------------------#");
+            System.out.println("#Certifique-se que tem os ficheiros de          #");
+            System.out.println("#pedidos de licença na pasta 'PedidosLicenca'   #");
+            System.out.println("#e a chave publica respetiva na pasta 'Keys'    #");
+            System.out.println("#-----------------------------------------------#");
+            System.out.println("#Qual o ficheiro de pedido de licença?          #");
+            System.out.println("#-----------------------------------------------#");
             String opcao1 = scan.nextLine();
-            System.out.println("#Qual o ficheiro da chave publica?           #");
-            System.out.println("#--------------------------------------------#");
-            String opcao2 = scan.nextLine();
+            File fileLicenca = new File("PedidosLicenca/PedidoDeLicenca.txt");
+            boolean exists = fileLicenca.exists();
+            if (fileLicenca.exists() && fileLicenca.isFile()) {
+                System.out.println("#-----------------------------------------------#");
+                System.out.println("#Qual o ficheiro da chave publica do utilizador?#");
+                System.out.println("#-----------------------------------------------#");
+                String opcao2 = scan.nextLine();
+                File fileKeys = new File("Licencas/Keys/publicKey.publick");
+                if (fileKeys.exists() && fileKeys.isFile()) {
 
-            //buscar chave publica ao ficheiro
-            byte[] bytesChavePublicaUtilizador = autor.readFromFile("PedidosLicenca/Keys/" + opcao2);
-            KeyFactory keyfa = KeyFactory.getInstance("RSA");
-            X509EncodedKeySpec xek = new X509EncodedKeySpec(bytesChavePublicaUtilizador);
-            PublicKey chavePublicaUtilizador = keyfa.generatePublic(xek);
+                    //buscar chave publica ao ficheiro
+                    byte[] bytesChavePublicaUtilizador = autor.readFromFile("PedidosLicenca/Keys/" + opcao2);
+                    KeyFactory keyfa = KeyFactory.getInstance("RSA");
+                    X509EncodedKeySpec xek = new X509EncodedKeySpec(bytesChavePublicaUtilizador);
+                    PublicKey chavePublicaUtilizador = keyfa.generatePublic(xek);
 
-            //buscar array list do pedido de licença
-            autor.readListFromFile("PedidosLicenca/" + opcao1);
+                    //buscar array list do pedido de licença
+                    autor.readListFromFile("PedidosLicenca/" + opcao1);
 
-            //buscar certificado
-            PublicKey chavePublicaCertificado = autor.getChaveCertificado();
-            boolean verificacao = autor.getVerificacaoAssinatura(chavePublicaCertificado);
-            if (autor.getVerificacaoAssinatura(chavePublicaCertificado)) {
-                //Se verdadeiro, continua e vai gerar a licença
+                    //buscar certificado
+                    PublicKey chavePublicaCertificado = autor.getChaveCertificado();
+                    boolean verificacao = autor.getVerificacaoAssinatura(chavePublicaCertificado);
+                    if (autor.getVerificacaoAssinatura(chavePublicaCertificado)) {
+                        //Se verdadeiro, continua e vai gerar a licença
 
-                //usar chave publica asimetrica para decifrar chave simetrica
-                byte[] bytesChaveSimetrica = autor.getSimKey(chavePublicaUtilizador);
+                        //usar chave publica asimetrica para decifrar chave simetrica
+                        byte[] bytesChaveSimetrica = autor.getSimKey(chavePublicaUtilizador);
 
-                //usar chave simetrica para decifrar dados do utilizador
-                SecretKey chaveDeCifraSim = new SecretKeySpec(bytesChaveSimetrica, "AES");
-                byte[] bytesVars = autor.getDadosDecifrados(chaveDeCifraSim);
+                        //usar chave simetrica para decifrar dados do utilizador
+                        SecretKey chaveDeCifraSim = new SecretKeySpec(bytesChaveSimetrica, "AES");
+                        byte[] bytesVars = autor.getDadosDecifrados(chaveDeCifraSim);
 
-                //TODO: VALIDAR SE OS DADOS JÁ NÃO ESTÃO EM USO NOUTRA LICENÇA
-                autor.generateLicence(bytesVars);
+                        //TODO: VALIDAR SE OS DADOS JÁ NÃO ESTÃO EM USO NOUTRA LICENÇA
+                        autor.generateLicence(bytesVars);
+                    } else {
+                        //se falso, avisa...
+
+                        System.out.println("A assinatura não é válida! A sair do programa.");
+                    }
+                } else {
+                    System.out.println("A chave pública do utilizador que introduziu não é válida ou não se encontra na diretoria certa. Tente novamente. \n");
+                }
             } else {
-                //se falso, avisa...
-
-                System.out.println("A assinatura não é válida! A sair do programa.");
+                System.out.println("O pedido de licenca que introduziu não é válida ou não se encontra na diretoria certa. Tente novamente. \n");
             }
+            /**
+             * - Dados do sistema cifrados por uma chave simetrica - chave
+             * simetrica cifrada pela chave privada assimetrica - assinatura com
+             * o certificado do cartão de cidadão - certificado do cartão de
+             * cidadão
+             */
+
+            //Buscar certificado do CC e verificar se não há mais nenhuma licenca para este utilizador
         } else {
             System.out.println("Opção inválida ... a sair do programa...");
         }
-        /**
-         * - Dados do sistema cifrados por uma chave simetrica - chave simetrica
-         * cifrada pela chave privada assimetrica - assinatura com o certificado
-         * do cartão de cidadão - certificado do cartão de cidadão
-         */
-
-        //Buscar certificado do CC e verificar se não há mais nenhuma licenca para este utilizador
     }
 }
