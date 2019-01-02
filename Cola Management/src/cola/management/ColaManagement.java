@@ -109,11 +109,14 @@ public class ColaManagement {
         Date dataTo = new Date(dataFrom.getTime() + 365 * 86400000l);
 
         String dados = new String(bytesVars);
-        dados += "\n Licença válida de:" + df.format(dataFrom) + " até " + df.format(dataTo);
+        dados += "\n\nLicença válida de:" + df.format(dataFrom) + " até:" + df.format(dataTo);
         System.out.println("========================================================");
         System.out.println("Ficheiro Licença\n " + dados);
         System.out.println("========================================================");
         byte[] byteVars = dados.getBytes();
+        
+        //teste!!!
+        //chaves.writeKeysToFile("teste.txt", byteVars);
 
         //gerar chave simetrica
         KeyGenerator generator = KeyGenerator.getInstance("AES");
@@ -129,7 +132,7 @@ public class ColaManagement {
 
         //cifrar chave simetrica com a chave assimetrica privada
         PrivateKey autorPriv = chaves.getPrivate("Licencas/Keys/privateKey.privk");
-        Cipher cifra = Cipher.getInstance("RSA/None/OAEPWithSHA1AndMGF1Padding");
+        Cipher cifra = Cipher.getInstance("RSA");
         cifra.init(Cipher.ENCRYPT_MODE, autorPriv);
         byte[] bytesChaveSimCifrada = cifra.doFinal(bytesChaveSimetrica);
         System.out.println("bytesChaveSimCifrada: " + Arrays.toString(bytesChaveSimCifrada));    //GUARDAR ISTO
