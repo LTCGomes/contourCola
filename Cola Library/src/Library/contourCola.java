@@ -77,8 +77,7 @@ public class contourCola {
             System.exit(1);
         }
         sistema = new Sistema();
-        aplicacao = new Aplicacao(nomeAplicacao, versao, "", "");
-
+        aplicacao = new Aplicacao(nomeAplicacao, versao);
         if (!new File("PedidosLicenca").isDirectory()) {
             new File("PedidosLicenca").mkdir();
         }
@@ -155,14 +154,14 @@ public class contourCola {
                 return false;
             }
 
-            //Dados Aplicacao
-            if (!dados[12].contains(aplicacao.getNomeAplicacao()) && !dados[13].contains(aplicacao.getVersao())) {
+            //Dados Aplicacao -> Adicionar hash da aplicação e da biblioteca em vez de nome e versão
+            if (!dados[14].contains(aplicacao.getHashAplicacao()) && !dados[15].contains(aplicacao.getHashBiblioteca())) {
                 System.out.println("Licenca Inválida: Aplicação diferente para o qual a licença foi imprimida");
                 return false;
             }
 
             //Validade
-            String[] validadeLicenca = dados[15].split(":");
+            String[] validadeLicenca = dados[17].split(":");
             validadeLicenca[1] = validadeLicenca[1].substring(0, validadeLicenca[1].indexOf(" "));
             DateFormat formatter = new SimpleDateFormat("dd-MM-yyyy");
             Date current = new Date();
@@ -206,7 +205,8 @@ public class contourCola {
             String stringVars = "";
             stringVars += "Dados do Utilizador\n\nNome:" + utilizador.getNome() + "\nNumero de Identificação Civil:" + utilizador.getIdenticacaoCivil() + "\nEmail:" + utilizador.getEmail()
                     + "\nDados do Sistema\n\nEndereço MAC:" + sistema.getEnderecoMac() + "\nNúmero de Série:" + sistema.getNumeroSerie() + "\nIdentificador Único Universal:" + sistema.getUuid()
-                    + "\nDados da Aplicação\n\nNome da aplicação:" + aplicacao.getNomeAplicacao() + "\nVersão da Aplicação:" + aplicacao.getVersao();
+                    + "\nDados da Aplicação\n\nNome da aplicação:" + aplicacao.getNomeAplicacao() + "\nVersão da Aplicação:" + aplicacao.getVersao() + "\nHash da Aplicação:" + aplicacao.getHashAplicacao() + "\nHash da Biblioteca:" + aplicacao.getHashBiblioteca();
+            
             System.out.println(stringVars);
             byte[] byteVars = stringVars.getBytes();
 
@@ -323,7 +323,6 @@ public class contourCola {
         Scanner scan = new Scanner(System.in);
         String opcao1 = scan.nextLine();
         File fileLicenca = new File("Licencas/Licenca.txt");
-        boolean exists = fileLicenca.exists();
         if (fileLicenca.exists() && fileLicenca.isFile()) {
             System.out.println("#--------------------------------------------#");
             System.out.println("#Qual o ficheiro da chave publica do autor?  #");
@@ -335,14 +334,7 @@ public class contourCola {
                 PublicKey chavePublicaUtilizador = chaves.getPublic("Licencas/Keys/" + opcao2);
 
                 //buscar array list do pedido de licença
-                String filename = "Licencas/" + opcao1;
-                ObjectInputStream in = new ObjectInputStream(new FileInputStream(filename));
-                this.licenca = (List<byte[]>) in.readObject();
-                in.close();
-                byte[] bytesVarsCifrados = licenca.get(0);
-                byte[] bytesChaveSimCifrada = licenca.get(1);
-                byte[] bytesCertCC = licenca.get(2);
-                byte[] bytesSig = licenca.get(3);
+                readListFromFile("Licencas/" + opcao1);
 
                 //buscar certificado
                 PublicKey chavePublicaCertificado = getChaveCertificado();
@@ -356,22 +348,20 @@ public class contourCola {
                     byte[] bytesVars = getDadosDecifrados(chaveDeCifraSim);
                     
                     String dados = new String(bytesVars);
+                    //imprimir para a consola
                     System.out.println("========================================================");
-                    System.out.println("Ficheiro Licença\n " + dados);
+                    System.out.println("Ficheiro Licença\n" + dados);
                     System.out.println("========================================================");
                 } else {
                     //se falso, avisa...
                     System.out.println("A assinatura não é válida! A sair do programa.");
                 }
 
-                //print to console
             } else {
                 System.out.println("A chave pública que introduziu não é válida. Tente novamente. \n");
-                showLicenseInfo();
             }
         } else {
-            System.out.println("O ficheiro Licenca que introduziu não é válido. Tente novamente \n");
-            showLicenseInfo();
+            System.out.println("O ficheiro Licença que introduziu não é válido ou não possuí um ficheiro de Licença. Tente novamente \n");
         }
 
     }
@@ -397,15 +387,5 @@ public class contourCola {
         ObjectInputStream in = new ObjectInputStream(new FileInputStream(filename));
         this.licenca = (List<byte[]>) in.readObject();
         in.close();
-        /*bytesVarsCifrados = list.get(0);
-        bytesChaveSimCifrada = list.get(1);
-        bytesCertCC = list.get(2);
-        bytesSig = list.get(3);*/
-        System.out.println("============");
-        System.out.println("array bytes bytesVarsCifrados: " + Arrays.toString(licenca.get(0)));
-        System.out.println("array bytes bytesChaveSimCifrada: " + Arrays.toString(licenca.get(1)));
-        System.out.println("array bytes bytesCertCC: " + Arrays.toString(licenca.get(2)));
-        System.out.println("array bytes bytesSig: " + Arrays.toString(licenca.get(3)));
-        System.out.println("============");
     }
 }

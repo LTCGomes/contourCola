@@ -247,7 +247,6 @@ public class ColaManagement {
             System.out.println("#-----------------------------------------------#");
             String opcao1 = scan.nextLine();
             File fileLicenca = new File("PedidosLicenca/PedidoDeLicenca.txt");
-            boolean exists = fileLicenca.exists();
             if (fileLicenca.exists() && fileLicenca.isFile()) {
                 System.out.println("#-----------------------------------------------#");
                 System.out.println("#Qual o ficheiro da chave publica do utilizador?#");
