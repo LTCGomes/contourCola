@@ -5,21 +5,26 @@
  */
 package Library;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 /**
  *
  * @author tjsantos
  */
 class Aplicacao {
-    private String nomeAplicacao;
-    private String versao;
-    private String hashAplicacao;
-    private String hashBiblioteca;
+    private final String nomeAplicacao;
+    private final String versao;
+    private final String hashAplicacao;
+    private final String hashBiblioteca;
     
-    public Aplicacao(String nomeAplicacao, String versao, String hashAplicacao, String hashBiblioteca) {
+    public Aplicacao(String nomeAplicacao, String versao) throws IOException, NoSuchAlgorithmException {
         this.nomeAplicacao = nomeAplicacao;
         this.versao = versao;
-        this.hashAplicacao = hashAplicacao;
-        this.hashBiblioteca = hashBiblioteca;
+        this.hashAplicacao = generateHash("src/calculator/application/CalculatorApplication.java");
+        this.hashBiblioteca = generateHash("dist/lib/Cola_Library.jar");
     }
 
     public String getNomeAplicacao() {
@@ -37,5 +42,23 @@ class Aplicacao {
     public String getHashBiblioteca() {
         return hashBiblioteca;
     }
-    
+
+    public final String generateHash(String path) throws IOException, NoSuchAlgorithmException {
+        FileInputStream fis = new FileInputStream(path);
+        byte[] b = new byte[fis.available()];
+        fis.read(b);
+        fis.close();
+        
+        MessageDigest md = MessageDigest.getInstance("SHA-1");
+        md.update(b);
+        byte[] hash = md.digest();
+        
+        StringBuilder sb = new StringBuilder();
+        for(int i=0; i< hash.length ;i++)
+        {
+            sb.append(Integer.toString((hash[i] & 0xff) + 0x100, 16).substring(1));
+        }
+
+        return sb.toString();
+    }    
 }
