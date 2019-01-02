@@ -273,7 +273,6 @@ public class ColaManagement {
 
                     //buscar certificado
                     PublicKey chavePublicaCertificado = autor.getChaveCertificado();
-                    boolean verificacao = autor.getVerificacaoAssinatura(chavePublicaCertificado);
                     if (autor.getVerificacaoAssinatura(chavePublicaCertificado)) {
                         //Se verdadeiro, continua e vai gerar a licença
 
@@ -283,26 +282,28 @@ public class ColaManagement {
                         //usar chave simetrica para decifrar dados do utilizador
                         SecretKey chaveDeCifraSim = new SecretKeySpec(bytesChaveSimetrica, "AES");
                         byte[] bytesVars = autor.getDadosDecifrados(chaveDeCifraSim);
-
-                        //TODO: VALIDAR SE OS DADOS JÁ NÃO ESTÃO EM USO NOUTRA LICENÇA
-                        byte[] users = autor.readFromFile("Licencas/BD/utilizadoresRegistados.txt");
-                        String stringUsers = new String(users);
                         
+                        
+                        byte[] bytesUsersKey = autor.readFromFile("Licencas/BD/usersKey.simKey");
+                        byte[] users = autor.readFromFile("Licencas/BD/utilizadoresRegistados.txt");
+                        String stringUsers = autor.getStringDeFicheiroBD(bytesUsersKey, chavePublicaUtilizador, users);
+                        
+                        byte[] bytesSistemasKey = autor.readFromFile("Licencas/BD/sistemasKey.simKey");
                         byte[] sistemas = autor.readFromFile("Licencas/BD/sistemasRegistados.txt");
-                        String stringSistemas = new String(sistemas);
+                        String stringSistemas =  autor.getStringDeFicheiroBD(bytesSistemasKey, chavePublicaUtilizador, sistemas);
                         
                         if (!stringUsers.contains(autor.getVariavel("Numero de Identificação Civil", bytesVars)) && !stringSistemas.contains(autor.getVariavel("Identificador Único Universal", bytesVars))) {
                             autor.generateLicence(bytesVars);
                             
                             //guardar novas variaveis na BD
-                            stringUsers += autor.getVariavel("Numero de Identificação Civil", bytesVars) + "\n";
+                            stringUsers += autor.getVariavel("Numero de Identificação Civil", bytesVars) + "\n";                          
                             stringSistemas += autor.getVariavel("Identificador Único Universal", bytesVars) + "\n";
                             
-                            byte[] usersToSave = stringUsers.getBytes();
+                            byte[] usersToSave = autor.generateAndSaveSimKey(stringUsers.getBytes(), "usersKey.simKey");
                             FileOutputStream fosUsers = new FileOutputStream("Licencas/BD/utilizadoresRegistados.txt");
                             fosUsers.write(usersToSave);
                             fosUsers.close();
-                            byte[] sistemasToSave = stringSistemas.getBytes();
+                            byte[] sistemasToSave = autor.generateAndSaveSimKey(stringSistemas.getBytes(), "sistemasKey.simKey");
                             FileOutputStream fosSistemas = new FileOutputStream("Licencas/BD/sistemasRegistados.txt");
                             fosSistemas.write(sistemasToSave);
                             fosSistemas.close();
@@ -337,5 +338,42 @@ public class ColaManagement {
         String[] dados = new String(bytesVars).split(variavel+":");
         dados[1] = dados[1].substring(0, dados[1].indexOf("\n"));
         return dados[1];
+    }
+    
+    public byte[] generateAndSaveSimKey(byte[] ficheiroParaCifrar, String name) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, Exception {
+        //gerar chave simetrica
+        KeyGenerator generator = KeyGenerator.getInstance("AES");
+        generator.init(128);
+        Key chaveSim = generator.generateKey();
+        byte[] bytesChaveSim = chaveSim.getEncoded();
+        // cifrar o ficheiro
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+        cipher.init(Cipher.ENCRYPT_MODE, chaveSim);
+        byte[] bytesVarsCifrados = cipher.doFinal(ficheiroParaCifrar);
+        
+        //cifrar chave simetrica com a chave assimetrica privada
+        PrivateKey colaPriv = chaves.getPrivate("Licencas/Keys/privateKey.privk");
+        Cipher cifra = Cipher.getInstance("RSA");
+        cifra.init(Cipher.ENCRYPT_MODE, colaPriv);
+        byte[] bytesChaveSimCifrada = cifra.doFinal(bytesChaveSim);
+        
+        File f = new File("Licencas/BD/"+name);
+        f.getParentFile().mkdirs();
+        ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(f));
+        out.writeObject(bytesChaveSimCifrada);
+        out.close();
+        
+        return bytesVarsCifrados;
+    }
+
+    private String getStringDeFicheiroBD(byte[] bytesKey, PublicKey chavePublicaUtilizador, byte[] bytesData) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Cipher cifra = Cipher.getInstance("RSA");
+        cifra.init(Cipher.DECRYPT_MODE, chavePublicaUtilizador);
+        byte[] usersKeyDecifrada = cifra.doFinal(bytesKey);
+        SecretKey chaveUsersSim = new SecretKeySpec(usersKeyDecifrada, "AES");
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+        cipher.init(Cipher.DECRYPT_MODE, chaveUsersSim);
+        byte[] bytesUsersDecifrados = cipher.doFinal(bytesData);
+        return  new String(bytesUsersDecifrados);
     }
 }
