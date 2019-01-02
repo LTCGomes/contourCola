@@ -34,9 +34,12 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
 import java.util.logging.Level;
@@ -137,48 +140,47 @@ public class contourCola {
             SecretKey chaveDeCifraSim = new SecretKeySpec(bytesChaveSimetrica, "AES");
             byte[] bytesVars = getDadosDecifrados(chaveDeCifraSim);
             
-            return true;
+            //verificar dados com os do sistema
+            String[] dados = new String(bytesVars).split("\n");
+
+            //Dados Utilizador
+            if (!dados[2].contains(utilizador.getNome()) && !dados[3].contains(""+utilizador.getIdenticacaoCivil())) {
+                System.out.println("Licenca Inválida: Utilizador diferente para o qual a licença foi imprimida");
+                return false;
+            }
+
+            //Dados Sistema
+            if (!dados[7].contains(sistema.getEnderecoMac()) && !dados[8].contains(sistema.getNumeroSerie()) && !dados[9].contains(sistema.getUuid())) {
+                System.out.println("Licenca Inválida: Sistema diferente para o qual a licença foi imprimida");
+                return false;
+            }
+
+            //Dados Aplicacao
+            if (!dados[12].contains(aplicacao.getNomeAplicacao()) && !dados[13].contains(aplicacao.getVersao())) {
+                System.out.println("Licenca Inválida: Aplicação diferente para o qual a licença foi imprimida");
+                return false;
+            }
+
+            //Validade
+            String[] validadeLicenca = dados[15].split(":");
+            validadeLicenca[1] = validadeLicenca[1].substring(0, validadeLicenca[1].indexOf(" "));
+            DateFormat formatter = new SimpleDateFormat("dd-MM-yyyy");
+            Date current = new Date();
+            Date from = formatter.parse(validadeLicenca[1]);
+            Date to = formatter.parse(validadeLicenca[2]);
+            if (current.after(from) && current.before(to)) {
+                System.out.println("Licença Válida - A iniciar programa");
+                return true;
+            }
         } else {
             //se falso, avisa...
 
             System.out.println("A assinatura não é válida! A sair do programa.");
         }
-        /*byte[] dadosTeste = readFromFile("Licencas/teste.txt");
         
-        //verificar dados com os do sistema
-        String[] dados = new String(dadosTeste).split("\n");
+        //teste!!!
+        //byte[] dadosTeste = readFromFile("Licencas/teste.txt");
         
-        System.out.println(dados[0]);
-        System.out.println(dados[1]);
-        System.out.println(dados[2]);
-        System.out.println(dados[3]);
-        System.out.println(dados[4]);
-        System.out.println(dados[5]);
-        System.out.println(dados[6]);
-        System.out.println(dados[7]);
-        System.out.println(dados[8]);
-        System.out.println(dados[9]);
-        System.out.println(dados[10]);
-        System.out.println(dados[11]);
-        System.out.println(dados[12]);
-        System.out.println(dados[13]);
-        System.out.println(dados[14]);
-        System.out.println(dados[15]);
-        
-        //Dados Utilizador
-        
-        //Dados Sistema
-        System.out.println(dados[3]);
-        //Dados Aplicacao
-        System.out.println(dados[5]);
-        //Validade
-        System.out.println(dados[15]);
-        /*
-        System.out.println("========================================================");
-        System.out.println("Ficheiro Licença\n " + dados);
-        System.out.println("========================================================");*/
-
-        //if contourCola information equals licence information -> return true
         return false;
     }
 
