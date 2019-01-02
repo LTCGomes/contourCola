@@ -69,8 +69,8 @@ public class GenerateKeys {
         byte[] keyBytes = new byte[fis.available()];
         fis.read(keyBytes);
         fis.close();
-        X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
         KeyFactory kf = KeyFactory.getInstance("RSA");
+        X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
         return kf.generatePublic(spec);
     }
 }

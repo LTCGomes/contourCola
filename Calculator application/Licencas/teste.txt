@@ -1,0 +1,16 @@
+Dados do Utilizador
+
+Nome:LUÍS TIAGO COUTINHO GOMES
+Numero de Identificação Civil:149193173
+Email:luis@au.pt
+Dados do Sistema
+
+Endereço MAC:0A-00-27-00-00-05
+Número de Série:XC046279K
+Identificador Único Universal:AC398E8A-7108-E211-83C6-B888E31ADE65
+Dados da Aplicação
+
+Nome da aplicação:Calculadora
+Versão da Aplicação:1.0
+
+Licença válida de:02-01-2019 até:02-01-2020

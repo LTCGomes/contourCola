@@ -36,7 +36,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Enumeration;
+import java.util.Base64;
 import java.util.List;
 import java.util.Scanner;
 import java.util.logging.Level;
@@ -48,6 +48,7 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import javax.xml.bind.DatatypeConverter;
 import pteidlib.PteidException;
 
 /**
@@ -99,8 +100,83 @@ public class contourCola {
 
     }
 
-    public boolean isRegister() {
+    public boolean isRegister() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, FileNotFoundException, ClassNotFoundException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, CertificateException, SignatureException, Exception {
         //read licence from file
+
+        System.out.println("#--------------------------------------------#");
+        System.out.println("#Certifique-se que tem os ficheiros de       #");
+        System.out.println("#pedidos de licença na pasta 'Licenca'       #");
+        System.out.println("#e a chave publica respetiva na pasta 'Keys' #");
+        System.out.println("#--------------------------------------------#");
+        System.out.println("#Qual o ficheiro de licenca?                 #");
+        System.out.println("#--------------------------------------------#");
+        Scanner scan = new Scanner(System.in);
+        String opcao1 = scan.nextLine();
+        System.out.println("#--------------------------------------------#");
+        System.out.println("#Qual o ficheiro da chave publica do autor?  #");
+        System.out.println("#--------------------------------------------#");
+        String opcao2 = scan.nextLine();
+
+        
+        //buscar chave publica ao ficheiro
+        PublicKey chavePublicaAutor = chaves.getPublic("Licencas/Keys/" + opcao2);
+
+        //buscar array list da licença
+        readListFromFile("Licencas/" + opcao1);
+
+        //buscar certificado
+        PublicKey chavePublicaCertificado = getChaveCertificado();
+        
+        //verificar assinatura        
+        if (getVerificacaoAssinatura(chavePublicaCertificado)) {
+
+            //usar chave publica asimetrica para decifrar chave simetrica
+            byte[] bytesChaveSimetrica = getSimKey(chavePublicaAutor);
+
+            //usar chave simetrica para decifrar dados do utilizador
+            SecretKey chaveDeCifraSim = new SecretKeySpec(bytesChaveSimetrica, "AES");
+            byte[] bytesVars = getDadosDecifrados(chaveDeCifraSim);
+            
+            return true;
+        } else {
+            //se falso, avisa...
+
+            System.out.println("A assinatura não é válida! A sair do programa.");
+        }
+        /*byte[] dadosTeste = readFromFile("Licencas/teste.txt");
+        
+        //verificar dados com os do sistema
+        String[] dados = new String(dadosTeste).split("\n");
+        
+        System.out.println(dados[0]);
+        System.out.println(dados[1]);
+        System.out.println(dados[2]);
+        System.out.println(dados[3]);
+        System.out.println(dados[4]);
+        System.out.println(dados[5]);
+        System.out.println(dados[6]);
+        System.out.println(dados[7]);
+        System.out.println(dados[8]);
+        System.out.println(dados[9]);
+        System.out.println(dados[10]);
+        System.out.println(dados[11]);
+        System.out.println(dados[12]);
+        System.out.println(dados[13]);
+        System.out.println(dados[14]);
+        System.out.println(dados[15]);
+        
+        //Dados Utilizador
+        
+        //Dados Sistema
+        System.out.println(dados[3]);
+        //Dados Aplicacao
+        System.out.println(dados[5]);
+        //Validade
+        System.out.println(dados[15]);
+        /*
+        System.out.println("========================================================");
+        System.out.println("Ficheiro Licença\n " + dados);
+        System.out.println("========================================================");*/
 
         //if contourCola information equals licence information -> return true
         return false;
@@ -126,9 +202,9 @@ public class contourCola {
             //buscar informação da contourCola e guarda-la para o ficheiro
             System.out.println("#-----------------------------------------#\n");
             String stringVars = "";
-            stringVars += " Dados do Utilizador \n Nome:" + utilizador.getNome() + "    Numero de Identificação Civil:" + utilizador.getIdenticacaoCivil() + "    Email:" + utilizador.getEmail()
-                    + "\n Dados do Sistema \n Endereço MAC:" + sistema.getEnderecoMac() + "    Número de Série:" + sistema.getNumeroSerie() + "   Identificador Único Universal:" + sistema.getUuid()
-                    + "\n Dados da Aplicação \n Nome da aplicação:" + aplicacao.getNomeAplicacao() + "     Versão da Aplicação:" + aplicacao.getVersao();
+            stringVars += "Dados do Utilizador\n\nNome:" + utilizador.getNome() + "\nNumero de Identificação Civil:" + utilizador.getIdenticacaoCivil() + "\nEmail:" + utilizador.getEmail()
+                    + "\nDados do Sistema\n\nEndereço MAC:" + sistema.getEnderecoMac() + "\nNúmero de Série:" + sistema.getNumeroSerie() + "\nIdentificador Único Universal:" + sistema.getUuid()
+                    + "\nDados da Aplicação\n\nNome da aplicação:" + aplicacao.getNomeAplicacao() + "\nVersão da Aplicação:" + aplicacao.getVersao();
             System.out.println(stringVars);
             byte[] byteVars = stringVars.getBytes();
 
@@ -208,20 +284,20 @@ public class contourCola {
     public byte[] getSimKey(PublicKey chavePublicaUtilizador) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         Cipher cifra = Cipher.getInstance("RSA");
         cifra.init(Cipher.DECRYPT_MODE, chavePublicaUtilizador);
-        return cifra.doFinal(list.get(1));
+        return cifra.doFinal(licenca.get(1));
     }
     
     //Metodo para retornar os dados do sistema
     public byte[] getDadosDecifrados(SecretKey chaveDeCifraSim) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
         cipher.init(Cipher.DECRYPT_MODE, chaveDeCifraSim);
-        return cipher.doFinal(list.get(0));
+        return cipher.doFinal(licenca.get(0));
     }
     
     //Método para ir buscar o certificado
     public PublicKey getChaveCertificado() throws CertificateException, NoSuchAlgorithmException, InvalidKeySpecException {
         CertificateFactory cf = CertificateFactory.getInstance("X.509");
-        InputStream is = new ByteArrayInputStream(list.get(2));
+        InputStream is = new ByteArrayInputStream(licenca.get(2));
         X509Certificate certificado = (X509Certificate) cf.generateCertificate(is);
         return certificado.getPublicKey();
     }
@@ -229,11 +305,11 @@ public class contourCola {
     public boolean getVerificacaoAssinatura(PublicKey chavePublicaCertificado) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException {
         Signature sig = Signature.getInstance("SHA256withRSA");
         sig.initVerify(chavePublicaCertificado);
-        sig.update(list.get(0));
-        return sig.verify(list.get(3));
+        sig.update(licenca.get(0));
+        return sig.verify(licenca.get(3));
     }
 
-    public void showLicenseInfo() throws NoSuchAlgorithmException, InvalidKeySpecException, IOException, ClassNotFoundException, CertificateException, InvalidKeyException, SignatureException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, BadPaddingException, BadPaddingException {
+    public void showLicenseInfo() throws NoSuchAlgorithmException, InvalidKeySpecException, IOException, ClassNotFoundException, CertificateException, InvalidKeyException, SignatureException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, BadPaddingException, BadPaddingException, Exception {
         //read licence from file
         System.out.println("#--------------------------------------------#");
         System.out.println("#Certifique-se que tem os ficheiros de       #");
@@ -254,24 +330,20 @@ public class contourCola {
             File fileKeys = new File("Licencas/Keys/publicKey.publick");
             if (fileKeys.exists() && fileKeys.isFile()) {
                 //buscar chave publica ao ficheiro
-                byte[] bytesChavePublicaUtilizador = readFromFile("Licencas/Keys/" + opcao2);
-                KeyFactory keyfa = KeyFactory.getInstance("RSA");
-                X509EncodedKeySpec xek = new X509EncodedKeySpec(bytesChavePublicaUtilizador);
-                PublicKey chavePublicaUtilizador = keyfa.generatePublic(xek);
+                PublicKey chavePublicaUtilizador = chaves.getPublic("Licencas/Keys/" + opcao2);
 
                 //buscar array list do pedido de licença
                 String filename = "Licencas/" + opcao1;
                 ObjectInputStream in = new ObjectInputStream(new FileInputStream(filename));
-                this.list = (List<byte[]>) in.readObject();
+                this.licenca = (List<byte[]>) in.readObject();
                 in.close();
-                byte[] bytesVarsCifrados = list.get(0);
-                byte[] bytesChaveSimCifrada = list.get(1);
-                byte[] bytesCertCC = list.get(2);
-                byte[] bytesSig = list.get(3);
+                byte[] bytesVarsCifrados = licenca.get(0);
+                byte[] bytesChaveSimCifrada = licenca.get(1);
+                byte[] bytesCertCC = licenca.get(2);
+                byte[] bytesSig = licenca.get(3);
 
                 //buscar certificado
                 PublicKey chavePublicaCertificado = getChaveCertificado();
-                boolean verificacao = getVerificacaoAssinatura(chavePublicaCertificado);
                 //Verificar se o certificado é válido
                 if (getVerificacaoAssinatura(chavePublicaCertificado)) {
                     //usar chave publica asimetrica para decifrar chave simetrica
@@ -280,7 +352,11 @@ public class contourCola {
                     //usar chave simetrica para decifrar dados do utilizador
                     SecretKey chaveDeCifraSim = new SecretKeySpec(bytesChaveSimetrica, "AES");
                     byte[] bytesVars = getDadosDecifrados(chaveDeCifraSim);
-                    System.out.println(Arrays.toString(bytesVars));
+                    
+                    String dados = new String(bytesVars);
+                    System.out.println("========================================================");
+                    System.out.println("Ficheiro Licença\n " + dados);
+                    System.out.println("========================================================");
                 } else {
                     //se falso, avisa...
                     System.out.println("A assinatura não é válida! A sair do programa.");
@@ -315,4 +391,19 @@ public class contourCola {
         return ba;
     }
 
+    public void readListFromFile(String filename) throws FileNotFoundException, IOException, ClassNotFoundException {
+        ObjectInputStream in = new ObjectInputStream(new FileInputStream(filename));
+        this.licenca = (List<byte[]>) in.readObject();
+        in.close();
+        /*bytesVarsCifrados = list.get(0);
+        bytesChaveSimCifrada = list.get(1);
+        bytesCertCC = list.get(2);
+        bytesSig = list.get(3);*/
+        System.out.println("============");
+        System.out.println("array bytes bytesVarsCifrados: " + Arrays.toString(licenca.get(0)));
+        System.out.println("array bytes bytesChaveSimCifrada: " + Arrays.toString(licenca.get(1)));
+        System.out.println("array bytes bytesCertCC: " + Arrays.toString(licenca.get(2)));
+        System.out.println("array bytes bytesSig: " + Arrays.toString(licenca.get(3)));
+        System.out.println("============");
+    }
 }
