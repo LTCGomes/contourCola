@@ -82,6 +82,15 @@ public class ColaManagement {
         if (!new File("Licencas/Keys").isDirectory()) {
             new File("Licencas/Keys").mkdir();
         }
+        if (!new File("Licencas/BD").isDirectory()) {
+            new File("Licencas/BD").mkdir();
+            File u = new File("Licencas/BD/utilizadoresRegistados.txt");
+            u.getParentFile().mkdirs(); 
+            u.createNewFile();
+            File s = new File("Licencas/BD/sistemasRegistados.txt");
+            s.getParentFile().mkdirs(); 
+            s.createNewFile();
+        }
         chaves = new GenerateKeys(1024);
         if (!new File("Licencas/Keys/publicKey.publick").exists() && !new File("Licencas/Keys/privateKey.privk").exists()) {
             chaves.createKeys();
@@ -160,11 +169,9 @@ public class ColaManagement {
         byte[] bytesSig = sig.sign();
         System.out.println("assinatura: " + Arrays.toString(bytesSig));    //GUARDAR ISTO
         list.add(bytesSig);
-
-        //TODO: gerar ficheiro com nome único
+        
         writeToFile("Licencas/Licenca.txt");
         File fileLicenca = new File("Licencas/Licenca.txt");
-        boolean exists = fileLicenca.exists();
         if (fileLicenca.exists() && fileLicenca.isFile()) {
             System.out.println("A licença foi criada com sucesso.");
         }
@@ -278,7 +285,30 @@ public class ColaManagement {
                         byte[] bytesVars = autor.getDadosDecifrados(chaveDeCifraSim);
 
                         //TODO: VALIDAR SE OS DADOS JÁ NÃO ESTÃO EM USO NOUTRA LICENÇA
-                        autor.generateLicence(bytesVars);
+                        byte[] users = autor.readFromFile("Licencas/BD/utilizadoresRegistados.txt");
+                        String stringUsers = new String(users);
+                        
+                        byte[] sistemas = autor.readFromFile("Licencas/BD/sistemasRegistados.txt");
+                        String stringSistemas = new String(sistemas);
+                        
+                        if (!stringUsers.contains(autor.getVariavel("Numero de Identificação Civil", bytesVars)) && !stringSistemas.contains(autor.getVariavel("Identificador Único Universal", bytesVars))) {
+                            autor.generateLicence(bytesVars);
+                            
+                            //guardar novas variaveis na BD
+                            stringUsers += autor.getVariavel("Numero de Identificação Civil", bytesVars) + "\n";
+                            stringSistemas += autor.getVariavel("Identificador Único Universal", bytesVars) + "\n";
+                            
+                            byte[] usersToSave = stringUsers.getBytes();
+                            FileOutputStream fosUsers = new FileOutputStream("Licencas/BD/utilizadoresRegistados.txt");
+                            fosUsers.write(usersToSave);
+                            fosUsers.close();
+                            byte[] sistemasToSave = stringSistemas.getBytes();
+                            FileOutputStream fosSistemas = new FileOutputStream("Licencas/BD/sistemasRegistados.txt");
+                            fosSistemas.write(sistemasToSave);
+                            fosSistemas.close();
+                        } else {
+                            System.out.println("Utilizador ou Sistema já estão presentes na nossa base de dados, não é possível imprimir outra licença");
+                        }
                     } else {
                         //se falso, avisa...
 
@@ -301,5 +331,11 @@ public class ColaManagement {
         } else {
             System.out.println("Opção inválida ... a sair do programa...");
         }
+    }
+
+    public String getVariavel(String variavel, byte[] bytesVars) {
+        String[] dados = new String(bytesVars).split(variavel+":");
+        dados[1] = dados[1].substring(0, dados[1].indexOf("\n"));
+        return dados[1];
     }
 }
