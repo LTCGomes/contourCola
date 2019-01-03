@@ -236,18 +236,21 @@ public class contourCola {
      * de cidadão
      */
     public boolean startRegistration() throws Exception {
+        
+        System.out.println("#-----------------------------------------#");
+        System.out.println("Introduza o ficheiro da chave publica do  #");
+        System.out.println("autor, certifique-se que a chave publica  #");
+        System.out.println("se encontra na pasta AutorKeys            #");
+        System.out.println("#-----------------------------------------#");
+
+        Scanner schave = new Scanner(System.in);
+        String publicKey = schave.nextLine();
 
         System.out.println("#-----------------------------------------#");
         System.out.println(" Introduza o seu email:");
 
         Scanner email = new Scanner(System.in);
         utilizador.setEmail(email.nextLine());
-        
-        System.out.println("#-----------------------------------------#");
-        System.out.println("Introduza o ficheiro da chave publica do autor:");
-
-        Scanner schave = new Scanner(System.in);
-        String publicKey = schave.nextLine();
 
         if (!(utilizador.getEmail().equals(""))) {
             list = new ArrayList<>();
@@ -356,7 +359,7 @@ public class contourCola {
                 PublicKey chavePublicaCertificado = getChaveCertificado();
                 //Verificar se o certificado é válido
                 if (getVerificacaoAssinatura(chavePublicaCertificado)) {
-                    //usar chave publica asimetrica para decifrar chave simetrica
+                    //usar chave privada asimetrica para decifrar chave simetrica
                     byte[] bytesChaveSimetrica = getSimKey(chavePrivUtilizador);
 
                     //usar chave simetrica para decifrar dados do utilizador

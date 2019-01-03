@@ -155,7 +155,7 @@ public class ColaManagement {
         list.add(bytesVarsCifrados);
 
         //cifrar chave simetrica com a chave assimetrica publica do utilizador
-        PublicKey utilizadorPublica = chaves.getPublic("PedidoDeLicenca/Keys/"+filePublicKey);
+        PublicKey utilizadorPublica = chaves.getPublic("PedidosLicenca/Keys/"+filePublicKey);
         Cipher cifra = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cifra.init(Cipher.ENCRYPT_MODE, utilizadorPublica);
         byte[] bytesChaveSimCifrada = cifra.doFinal(bytesChaveSimetrica);
@@ -272,7 +272,7 @@ public class ColaManagement {
             File fileLicenca = new File("PedidosLicenca/PedidoDeLicenca.txt");
             if (fileLicenca.exists() && fileLicenca.isFile()) {
                 System.out.println("#-----------------------------------------------#");
-                System.out.println("#Qual o ficheiro da publica do utilizador?      #");
+                System.out.println("#Qual o ficheiro da chave publica do utilizador?#");
                 System.out.println("#-----------------------------------------------#");
                 String opcao2 = scan.nextLine();
                 File fileKeys = new File("PedidosLicenca/Keys/publicKey.publick");
@@ -367,9 +367,9 @@ public class ColaManagement {
         byte[] bytesFicheiroCifrado = cipher.doFinal(ficheiroParaCifrar);
         
         //cifrar chave simetrica com a chave assimetrica privada
-        PrivateKey colaPriv = chaves.getPrivate("Licencas/Keys/privateKey.privk");
+        PublicKey colaPublic = chaves.getPublic("Licencas/Keys/publicKey.publick");
         Cipher cifra = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-        cifra.init(Cipher.ENCRYPT_MODE, colaPriv);
+        cifra.init(Cipher.ENCRYPT_MODE, colaPublic);
         byte[] bytesChavesimetricaCifrada = cifra.doFinal(bytesChaveSim);
                 
         FileOutputStream fos = new FileOutputStream(new File("Licencas/BD/"+name), false);
