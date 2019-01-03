@@ -83,6 +83,13 @@ public class ColaManagement {
         if (!new File("Licencas/Keys").isDirectory()) {
             new File("Licencas/Keys").mkdir();
         }
+        chaves = new GenerateKeys(1024);
+        if (!new File("Licencas/Keys/publicKey.publick").exists() && !new File("Licencas/Keys/privateKey.privk").exists()) {
+            chaves.createKeys();
+            chaves.writeKeysToFile("Licencas/Keys/publicKey.publick", chaves.getPublicKey().getEncoded());
+            chaves.writeKeysToFile("Licencas/Keys/privateKey.privk", chaves.getPrivateKey().getEncoded());
+        }
+
         if (!new File("Licencas/BD").isDirectory()) {
             new File("Licencas/BD").mkdir();
             
@@ -104,13 +111,7 @@ public class ColaManagement {
             fosSistemas.write(sistemasToSave);
             fosSistemas.close();
         }
-        chaves = new GenerateKeys(1024);
-        if (!new File("Licencas/Keys/publicKey.publick").exists() && !new File("Licencas/Keys/privateKey.privk").exists()) {
-            chaves.createKeys();
-            chaves.writeKeysToFile("Licencas/Keys/publicKey.publick", chaves.getPublicKey().getEncoded());
-            chaves.writeKeysToFile("Licencas/Keys/privateKey.privk", chaves.getPrivateKey().getEncoded());
-        }
-
+        
     }
 
     private void writeToFile(String filename) throws FileNotFoundException, IOException {
@@ -354,7 +355,7 @@ public class ColaManagement {
         return dados[1];
     }
     
-    public byte[] generateAndSaveSimKey(byte[] ficheiroParaCifrar, String name) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, Exception {
+    private byte[] generateAndSaveSimKey(byte[] ficheiroParaCifrar, String name) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, Exception {
         //gerar chave simetrica
         KeyGenerator generator = KeyGenerator.getInstance("AES");
         generator.init(128);
