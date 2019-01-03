@@ -69,7 +69,8 @@ public class ColaManagement {
     /**
      * @param args the command line arguments
      */
-    public ColaManagement() throws NoSuchAlgorithmException, IOException {
+    public ColaManagement() throws IOException, Exception {
+                
         if (!new File("PedidosLicenca").isDirectory()) {
             new File("PedidosLicenca").mkdir();
         }
@@ -84,12 +85,24 @@ public class ColaManagement {
         }
         if (!new File("Licencas/BD").isDirectory()) {
             new File("Licencas/BD").mkdir();
+            
             File u = new File("Licencas/BD/utilizadoresRegistados.txt");
             u.getParentFile().mkdirs(); 
             u.createNewFile();
+            
+            byte[] usersToSave = generateAndSaveSimKey("".getBytes(), "usersKey.simKey");
+            FileOutputStream fosUsers = new FileOutputStream("Licencas/BD/utilizadoresRegistados.txt");
+            fosUsers.write(usersToSave);
+            fosUsers.close();
+            
             File s = new File("Licencas/BD/sistemasRegistados.txt");
             s.getParentFile().mkdirs(); 
             s.createNewFile();
+            
+            byte[] sistemasToSave = generateAndSaveSimKey("".getBytes(), "sistemasKey.simKey");
+            FileOutputStream fosSistemas = new FileOutputStream("Licencas/BD/sistemasRegistados.txt");
+            fosSistemas.write(sistemasToSave);
+            fosSistemas.close();
         }
         chaves = new GenerateKeys(1024);
         if (!new File("Licencas/Keys/publicKey.publick").exists() && !new File("Licencas/Keys/privateKey.privk").exists()) {
@@ -171,7 +184,7 @@ public class ColaManagement {
         list.add(bytesSig);
         
         writeToFile("Licencas/Licenca.txt");
-        File fileLicenca = new File("Licencas/Licenca.txt");
+        File fileLicenca = new File("Licencas/Licenca_"+dataFrom.getTime()+".txt");
         if (fileLicenca.exists() && fileLicenca.isFile()) {
             System.out.println("A licença foi criada com sucesso.");
         }
@@ -232,8 +245,9 @@ public class ColaManagement {
 
     public static void main(String[] args) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, FileNotFoundException, ClassNotFoundException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, CertificateException, SignatureException, Exception {
         // TODO code application logic here
-        ColaManagement autor = new ColaManagement();
 
+        ColaManagement autor = new ColaManagement();
+        
         //INSERT MENU HERE
         System.out.println("#------------------------------------------------#");
         System.out.println("#O que pretende fazer?                           #");
