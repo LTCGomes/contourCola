@@ -251,13 +251,18 @@ public class ColaManagement {
         ColaManagement autor = new ColaManagement();
         
         //INSERT MENU HERE
-        System.out.println("#------------------------------------------------#");
-        System.out.println("#O que pretende fazer?                           #");
-        System.out.println("#1 - Gerar ficheiros de licenca                  #");
-        //System.out.println("#Verificar licenca para um utilizador  (2)#");
-        System.out.println("#------------------------------------------------#");
-        Scanner scan = new Scanner(System.in);
-        String opcao = scan.nextLine();
+        String opcao = "";
+        while (!opcao.equals("1") && !opcao.equals("2")) {
+            //INSERT MENU HERE
+            System.out.println("#------------------------------------------------#");
+            System.out.println("#Prentede gerar um ficheiros de licenca          #");
+            System.out.println("#1 - Sim                                         #");
+            System.out.println("#2 - Não                                          #");
+            System.out.println("#------------------------------------------------#");
+
+            Scanner scan = new Scanner(System.in);
+            opcao = scan.nextLine();
+        }
 
         if (opcao.equals("1")) {
 
@@ -268,6 +273,7 @@ public class ColaManagement {
             System.out.println("#-----------------------------------------------#");
             System.out.println("#Qual o ficheiro de pedido de licença?          #");
             System.out.println("#-----------------------------------------------#");
+            Scanner scan = new Scanner(System.in);
             String opcao1 = scan.nextLine();
             File fileLicenca = new File("PedidosLicenca/PedidoDeLicenca.txt");
             if (fileLicenca.exists() && fileLicenca.isFile()) {
@@ -345,7 +351,8 @@ public class ColaManagement {
 
             //Buscar certificado do CC e verificar se não há mais nenhuma licenca para este utilizador
         } else {
-            System.out.println("Opção inválida ... a sair do programa...");
+            System.out.println("A sair do programa.");
+            System.exit(0);
         }
     }
 
