@@ -97,8 +97,8 @@ public class ColaManagement {
             u.getParentFile().mkdirs(); 
             u.createNewFile();
             
-            byte[] usersToSave = generateAndSaveSimKey("".getBytes(), "usersKey.simKey");
-            FileOutputStream fosUsers = new FileOutputStream("Licencas/BD/utilizadoresRegistados.txt");
+            byte[] usersToSave = generateAndSaveSimKey("\n".getBytes(), "usersKey.simKey");
+            FileOutputStream fosUsers = new FileOutputStream(new File("Licencas/BD/utilizadoresRegistados.txt"));
             fosUsers.write(usersToSave);
             fosUsers.close();
             
@@ -106,8 +106,8 @@ public class ColaManagement {
             s.getParentFile().mkdirs(); 
             s.createNewFile();
             
-            byte[] sistemasToSave = generateAndSaveSimKey("".getBytes(), "sistemasKey.simKey");
-            FileOutputStream fosSistemas = new FileOutputStream("Licencas/BD/sistemasRegistados.txt");
+            byte[] sistemasToSave = generateAndSaveSimKey("\n".getBytes(), "sistemasKey.simKey");
+            FileOutputStream fosSistemas = new FileOutputStream(new File("Licencas/BD/sistemasRegistados.txt"), false);
             fosSistemas.write(sistemasToSave);
             fosSistemas.close();
         }
@@ -364,21 +364,19 @@ public class ColaManagement {
         // cifrar o ficheiro
         Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
         cipher.init(Cipher.ENCRYPT_MODE, chaveSim);
-        byte[] bytesVarsCifrados = cipher.doFinal(ficheiroParaCifrar);
+        byte[] bytesFicheiroCifrado = cipher.doFinal(ficheiroParaCifrar);
         
         //cifrar chave simetrica com a chave assimetrica privada
         PrivateKey colaPriv = chaves.getPrivate("Licencas/Keys/privateKey.privk");
         Cipher cifra = Cipher.getInstance("RSA");
         cifra.init(Cipher.ENCRYPT_MODE, colaPriv);
-        byte[] bytesChaveSimCifrada = cifra.doFinal(bytesChaveSim);
+        byte[] bytesChavesimetricaCifrada = cifra.doFinal(bytesChaveSim);
+                
+        FileOutputStream fos = new FileOutputStream(new File("Licencas/BD/"+name), false);
+        fos.write(bytesChavesimetricaCifrada);
+        fos.close();
         
-        File f = new File("Licencas/BD/"+name);
-        f.getParentFile().mkdirs();
-        ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(f));
-        out.writeObject(bytesChaveSimCifrada);
-        out.close();
-        
-        return bytesVarsCifrados;
+        return bytesFicheiroCifrado;
     }
 
     private String getStringDeFicheiroBD(byte[] bytesKey, PublicKey chavePublicaUtilizador, byte[] bytesData) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
