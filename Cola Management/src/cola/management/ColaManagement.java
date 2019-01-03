@@ -31,6 +31,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -122,7 +123,7 @@ public class ColaManagement {
         out.close();
     }
 
-    public void generateLicence(byte[] bytesVars) throws NoSuchAlgorithmException, Exception {
+    public void generateLicence(byte[] bytesVars, String filePublicKey) throws NoSuchAlgorithmException, Exception {
 
         licenca = new ArrayList<byte[]>();
 
@@ -153,10 +154,10 @@ public class ColaManagement {
         System.out.println("bytesVarsCifrados: " + Arrays.toString(bytesVarsCifrados));    //GUARDAR ISTO
         list.add(bytesVarsCifrados);
 
-        //cifrar chave simetrica com a chave assimetrica privada
-        PrivateKey autorPriv = chaves.getPrivate("Licencas/Keys/privateKey.privk");
-        Cipher cifra = Cipher.getInstance("RSA");
-        cifra.init(Cipher.ENCRYPT_MODE, autorPriv);
+        //cifrar chave simetrica com a chave assimetrica publica do utilizador
+        PublicKey utilizadorPublica = chaves.getPublic("PedidoDeLicenca/Keys/"+filePublicKey);
+        Cipher cifra = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        cifra.init(Cipher.ENCRYPT_MODE, utilizadorPublica);
         byte[] bytesChaveSimCifrada = cifra.doFinal(bytesChaveSimetrica);
         System.out.println("bytesChaveSimCifrada: " + Arrays.toString(bytesChaveSimCifrada));    //GUARDAR ISTO
         list.add(bytesChaveSimCifrada);
@@ -218,9 +219,9 @@ public class ColaManagement {
 
     }
 
-    public byte[] getSimKey(PublicKey chavePublicaUtilizador) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        Cipher cifra = Cipher.getInstance("RSA");
-        cifra.init(Cipher.DECRYPT_MODE, chavePublicaUtilizador);
+    public byte[] getSimKey(PrivateKey chavePrivAutor) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Cipher cifra = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        cifra.init(Cipher.DECRYPT_MODE, chavePrivAutor);
         return cifra.doFinal(list.get(1));
     }
 
@@ -271,17 +272,17 @@ public class ColaManagement {
             File fileLicenca = new File("PedidosLicenca/PedidoDeLicenca.txt");
             if (fileLicenca.exists() && fileLicenca.isFile()) {
                 System.out.println("#-----------------------------------------------#");
-                System.out.println("#Qual o ficheiro da chave publica do utilizador?#");
+                System.out.println("#Qual o ficheiro da publica do utilizador?      #");
                 System.out.println("#-----------------------------------------------#");
                 String opcao2 = scan.nextLine();
-                File fileKeys = new File("Licencas/Keys/publicKey.publick");
+                File fileKeys = new File("PedidosLicenca/Keys/publicKey.publick");
                 if (fileKeys.exists() && fileKeys.isFile()) {
 
                     //buscar chave publica ao ficheiro
-                    byte[] bytesChavePublicaUtilizador = autor.readFromFile("PedidosLicenca/Keys/" + opcao2);
-                    KeyFactory keyfa = KeyFactory.getInstance("RSA");
-                    X509EncodedKeySpec xek = new X509EncodedKeySpec(bytesChavePublicaUtilizador);
-                    PublicKey chavePublicaUtilizador = keyfa.generatePublic(xek);
+                    byte[] bytesChavePrivAutor = autor.readFromFile("Licencas/Keys/privateKey.privk");
+                    PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(bytesChavePrivAutor);
+                    KeyFactory kf = KeyFactory.getInstance("RSA");
+                    PrivateKey chavePrivAutor = kf.generatePrivate(spec);
 
                     //buscar array list do pedido de licença
                     autor.readListFromFile("PedidosLicenca/" + opcao1);
@@ -291,24 +292,23 @@ public class ColaManagement {
                     if (autor.getVerificacaoAssinatura(chavePublicaCertificado)) {
                         //Se verdadeiro, continua e vai gerar a licença
 
-                        //usar chave publica asimetrica para decifrar chave simetrica
-                        byte[] bytesChaveSimetrica = autor.getSimKey(chavePublicaUtilizador);
+                        //usar chave privada asimetrica para decifrar chave simetrica
+                        byte[] bytesChaveSimetrica = autor.getSimKey(chavePrivAutor);
 
                         //usar chave simetrica para decifrar dados do utilizador
                         SecretKey chaveDeCifraSim = new SecretKeySpec(bytesChaveSimetrica, "AES");
                         byte[] bytesVars = autor.getDadosDecifrados(chaveDeCifraSim);
                         
-                        
                         byte[] bytesUsersKey = autor.readFromFile("Licencas/BD/usersKey.simKey");
                         byte[] users = autor.readFromFile("Licencas/BD/utilizadoresRegistados.txt");
-                        String stringUsers = autor.getStringDeFicheiroBD(bytesUsersKey, chavePublicaUtilizador, users);
+                        String stringUsers = autor.getStringDeFicheiroBD(bytesUsersKey, chavePrivAutor, users);
                         
                         byte[] bytesSistemasKey = autor.readFromFile("Licencas/BD/sistemasKey.simKey");
                         byte[] sistemas = autor.readFromFile("Licencas/BD/sistemasRegistados.txt");
-                        String stringSistemas =  autor.getStringDeFicheiroBD(bytesSistemasKey, chavePublicaUtilizador, sistemas);
+                        String stringSistemas =  autor.getStringDeFicheiroBD(bytesSistemasKey, chavePrivAutor, sistemas);
                         
                         if (!stringUsers.contains(autor.getVariavel("Numero de Identificação Civil", bytesVars)) && !stringSistemas.contains(autor.getVariavel("Identificador Único Universal", bytesVars))) {
-                            autor.generateLicence(bytesVars);
+                            autor.generateLicence(bytesVars, opcao2);
                             
                             //guardar novas variaveis na BD
                             stringUsers += autor.getVariavel("Numero de Identificação Civil", bytesVars) + "\n";                          
@@ -368,7 +368,7 @@ public class ColaManagement {
         
         //cifrar chave simetrica com a chave assimetrica privada
         PrivateKey colaPriv = chaves.getPrivate("Licencas/Keys/privateKey.privk");
-        Cipher cifra = Cipher.getInstance("RSA");
+        Cipher cifra = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cifra.init(Cipher.ENCRYPT_MODE, colaPriv);
         byte[] bytesChavesimetricaCifrada = cifra.doFinal(bytesChaveSim);
                 
@@ -379,11 +379,11 @@ public class ColaManagement {
         return bytesFicheiroCifrado;
     }
 
-    private String getStringDeFicheiroBD(byte[] bytesKey, PublicKey chavePublicaUtilizador, byte[] bytesData) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        Cipher cifra = Cipher.getInstance("RSA");
-        cifra.init(Cipher.DECRYPT_MODE, chavePublicaUtilizador);
+    private String getStringDeFicheiroBD(byte[] bytesKey, PrivateKey chavePrivAutor, byte[] bytesData) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Cipher cifra = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        cifra.init(Cipher.DECRYPT_MODE, chavePrivAutor);
         byte[] usersKeyDecifrada = cifra.doFinal(bytesKey);
-        SecretKey chaveUsersSim = new SecretKeySpec(usersKeyDecifrada, "AES");
+        SecretKeySpec chaveUsersSim = new SecretKeySpec(usersKeyDecifrada, "AES");
         Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
         cipher.init(Cipher.DECRYPT_MODE, chaveUsersSim);
         byte[] bytesUsersDecifrados = cipher.doFinal(bytesData);
