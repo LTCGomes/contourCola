@@ -185,7 +185,7 @@ public class ColaManagement {
         System.out.println("assinatura: " + Arrays.toString(bytesSig));    //GUARDAR ISTO
         list.add(bytesSig);
         
-        writeToFile("Licencas/Licenca.txt");
+        writeToFile("Licencas/Licenca_"+dataFrom.getTime()+".txt");
         File fileLicenca = new File("Licencas/Licenca_"+dataFrom.getTime()+".txt");
         if (fileLicenca.exists() && fileLicenca.isFile()) {
             System.out.println("A licença foi criada com sucesso.");
@@ -255,9 +255,9 @@ public class ColaManagement {
         while (!opcao.equals("1") && !opcao.equals("2")) {
             //INSERT MENU HERE
             System.out.println("#------------------------------------------------#");
-            System.out.println("#Prentede gerar um ficheiros de licenca          #");
+            System.out.println("#Prentede gerar um ficheiro de licença?          #");
             System.out.println("#1 - Sim                                         #");
-            System.out.println("#2 - Não                                          #");
+            System.out.println("#2 - Não                                         #");
             System.out.println("#------------------------------------------------#");
 
             Scanner scan = new Scanner(System.in);
